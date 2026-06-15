@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>For Workers | Local Fix</title>
+    <meta name="description" content="Get notified when homeowners near you post plumbing, handyman, or repair jobs. Review the details and decide which jobs are worth responding to." />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="index.html" aria-label="Local Fix home"><img class="brand-logo" src="logos/Localfix-HorzontalLogoNewBLACK.png" alt="Local Fix" /></a>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="post-job.html">Post My Problem</a>
+          <a href="for-workers.html" class="active">For Workers</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-primary" href="#worker-form">Join as a Worker</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="page-head">
+        <p class="eyebrow">For local workers &amp; contractors</p>
+        <h1>Get jobs from homeowners near you.</h1>
+        <p>
+          Get notified when homeowners near you post plumbing, handyman, or repair jobs. Review the details and
+          decide which jobs are worth responding to.
+        </p>
+      </div>
+
+      <!-- Benefits -->
+      <section class="section" style="padding-top: 40px">
+        <div class="wrap">
+          <div class="trust-grid">
+            <article class="trust-card">
+              <div class="trust-icon" aria-hidden="true">🔔</div>
+              <h3>Local leads</h3>
+              <p>Get notified about jobs posted in the areas you actually serve.</p>
+            </article>
+            <article class="trust-card">
+              <div class="trust-icon" aria-hidden="true">📋</div>
+              <h3>See the details first</h3>
+              <p>Photos, descriptions, and location help you judge a job before responding.</p>
+            </article>
+            <article class="trust-card">
+              <div class="trust-icon" aria-hidden="true">🎯</div>
+              <h3>You choose</h3>
+              <p>Only respond to the jobs that are worth your time.</p>
+            </article>
+            <article class="trust-card">
+              <div class="trust-icon" aria-hidden="true">⚙️</div>
+              <h3>Control your volume</h3>
+              <p>Tell us how many leads you want each week.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Worker form -->
+      <section class="section section-mist" id="worker-form">
+        <div class="narrow">
+          <div class="section-head">
+            <p class="eyebrow">Join as a Worker</p>
+            <h2>Sign up to start receiving jobs</h2>
+          </div>
+
+          <form class="form-card" id="workerForm" aria-label="Worker signup">
+            <div class="field">
+              <label for="w-name">Name</label>
+              <input id="w-name" name="name" type="text" placeholder="Your full name" required />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="w-phone">Phone number</label>
+                <input id="w-phone" name="phone" type="tel" placeholder="(555) 123-4567" required />
+              </div>
+              <div class="field">
+                <label for="w-email">Email</label>
+                <input id="w-email" name="email" type="email" placeholder="you@email.com" required />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="w-trade">Trade or skill</label>
+                <select id="w-trade" name="trade" required>
+                  <option value="" disabled selected>Choose…</option>
+                  <option>Plumbing</option>
+                  <option>Handyman</option>
+                  <option>Electrical</option>
+                  <option>Painting</option>
+                  <option>Drywall</option>
+                  <option>Appliance repair</option>
+                  <option>General contractor</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="w-area">Service area</label>
+                <input id="w-area" name="area" type="text" placeholder="ZIP codes or city/region" required />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="w-years">Years of experience</label>
+                <input id="w-years" name="years" type="number" min="0" placeholder="e.g. 5" />
+              </div>
+              <div class="field">
+                <label for="w-leads">Leads you want per week</label>
+                <select id="w-leads" name="leads">
+                  <option>1–5</option>
+                  <option>6–10</option>
+                  <option>11–20</option>
+                  <option>As many as possible</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="w-license">License or insurance info <span class="hint">(optional, if relevant)</span></label>
+              <input id="w-license" name="license" type="text" placeholder="License #, insurance carrier, etc." />
+            </div>
+            <div class="field">
+              <label for="w-jobs">Types of jobs you want</label>
+              <textarea id="w-jobs" name="jobtypes" placeholder="e.g. faucet & toilet repairs, drywall patches, small installs"></textarea>
+            </div>
+
+            <label class="consent">
+              <input type="checkbox" id="w-consent" required />
+              <span>By submitting this form, you agree to be contacted about jobs and your account.</span>
+            </label>
+            <button class="btn btn-primary btn-lg btn-block" type="submit">Join as a Worker</button>
+          </form>
+
+          <div class="form-success" id="workerSuccess" role="status">
+            <div class="success-mark" aria-hidden="true">✓</div>
+            <h2>Thanks for signing up.</h2>
+            <p>We’ve received your details and will reach out as jobs in your area come in.</p>
+            <p style="margin-top: 20px"><a class="btn btn-ghost" href="index.html">Back to home</a></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <a class="footer-brand" href="index.html"><img class="footer-logo" src="logos/Localfix-HorzontalLogoWHITE.png" alt="Local Fix" /></a>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="post-job.html">Post My Problem</a>
+          <a href="for-workers.html">For Workers</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+        </nav>
+        <p class="footer-note">
+          Local Fix connects homeowners with local workers for small home repair jobs. We are not a licensed
+          contractor and do not perform repairs ourselves.
+        </p>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
