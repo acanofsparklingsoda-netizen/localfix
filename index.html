@@ -10,6 +10,7 @@
     />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app.css" />
   </head>
   <body>
     <header class="site-header">
@@ -20,12 +21,11 @@
           <a href="index.html" class="active">Home</a>
           <a href="post-job.html">Post My Problem</a>
           <a href="for-workers.html">For Workers</a>
-          <a href="about.html">About</a>
           <a href="contact.html">Contact</a>
         </div>
 
         <div class="nav-cta">
-          <a class="btn btn-primary" href="post-job.html">Post My Problem</a>
+          <span class="nav-auth" id="navAuth"></span>
         </div>
       </nav>
     </header>
@@ -132,22 +132,30 @@
 
           <div class="trust-grid">
             <article class="trust-card">
-              <div class="trust-icon" aria-hidden="true">📍</div>
+              <div class="trust-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+              </div>
               <h3>Local workers</h3>
               <p>Your request is reviewed by people who serve your area.</p>
             </article>
             <article class="trust-card">
-              <div class="trust-icon" aria-hidden="true">📷</div>
+              <div class="trust-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2 2 0 0 1 6 6.5h1.3l.9-1.6A1 1 0 0 1 9.1 4.5h5.8a1 1 0 0 1 .9.5l.9 1.5H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.6" r="3.2"/></svg>
+              </div>
               <h3>Photos help workers</h3>
               <p>Better details can lead to faster, more accurate responses.</p>
             </article>
             <article class="trust-card">
-              <div class="trust-icon" aria-hidden="true">🤝</div>
+              <div class="trust-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Z"/><path d="m8.8 11.6 2.2 2.2 4.2-4.6"/></svg>
+              </div>
               <h3>No obligation</h3>
               <p>Posting a job does not force you to hire anyone.</p>
             </article>
             <article class="trust-card">
-              <div class="trust-icon" aria-hidden="true">✅</div>
+              <div class="trust-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12.5 11 5.1a2 2 0 0 1 1.4-.6h6.1A1.5 1.5 0 0 1 20 6v6.1a2 2 0 0 1-.6 1.4L13 20.9a1.7 1.7 0 0 1-2.4 0l-6.4-6.4a1.7 1.7 0 0 1 0-2.4Z"/><circle cx="15.4" cy="8.6" r="1.2"/></svg>
+              </div>
               <h3>Simple and free</h3>
               <p>Submitting a repair request is free for homeowners.</p>
             </article>
@@ -235,7 +243,6 @@
         <nav class="footer-links" aria-label="Footer">
           <a href="post-job.html">Post My Problem</a>
           <a href="for-workers.html">For Workers</a>
-          <a href="about.html">About</a>
           <a href="contact.html">Contact</a>
         </nav>
         <p class="footer-note">
@@ -245,6 +252,10 @@
       </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script src="script.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="auth-nav.js"></script>
   </body>
 </html>

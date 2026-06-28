@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browse Jobs | Local Fix for Workers</title>
+    <meta name="description" content="Local workers: browse repair jobs posted near you." />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body class="lf-app lf-reels-page">
+    <header class="lf-topbar">
+      <a class="brand" href="index.html" aria-label="Local Fix home"><img class="brand-logo" src="logos/Localfix-HorzontalLogoNewBLACK.png" alt="Local Fix" /></a>
+    </header>
+    <main class="lf-reels-main">
+      <div class="lf-reel-hint" id="reelHint" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/><path d="m6 15 6 6 6-6" opacity="0.5"/></svg>
+      </div>
+      <div class="lf-reels-center" id="centerMsg"></div>
+      <div class="lf-reels" id="jobs" hidden></div>
+    </main>
+
+    <nav class="lf-tabbar" aria-label="Worker navigation">
+      <a class="lf-tab is-active" href="contractors.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/></svg>
+        <span>Jobs</span>
+      </a>
+      <button class="lf-tab" type="button" id="tabProfile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>
+        <span>Profile</span>
+      </button>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app-shell.js"></script>
+    <script>
+      (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        $("tabProfile").addEventListener("click", function () { AppShell.openDrawer(); });
+        var jobsEl = $("jobs"), centerMsg = $("centerMsg"), reelHint = $("reelHint");
+
+        var ready = window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY &&
+                    !/YOUR-/.test(window.SUPABASE_URL + window.SUPABASE_ANON_KEY);
+        var sb = ready ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
+
+        var iconPin = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z'/><circle cx='12' cy='10' r='2.6'/></svg>";
+        var iconWrench = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.6-.6-2.5 2.6-2.4Z'/></svg>";
+        var iconInfo = "<svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 16v-4'/><path d='M12 8h.01'/></svg>";
+        var iconX = "<svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 6 6 18M6 6l12 12'/></svg>";
+        var iconClock = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 7.5V12l3 2'/></svg>";
+        var iconCal = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4.5' width='18' height='16' rx='2.5'/><path d='M3 9h18M8 2.5v4M16 2.5v4'/></svg>";
+
+        function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+        function fmtDate(iso) { if (!iso) return ""; var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+        function longDate(iso) { if (!iso) return ""; var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+        function urgClass(u) { var t = (u || "").toLowerCase(); if (t.indexOf("today") > -1) return "lf-badge--today"; if (t.indexOf("flex") > -1) return "lf-badge--flex"; return "lf-badge--week"; }
+        function isMediaUrl(u) { return typeof u === "string" && /^https?:\/\//i.test(u); }
+        function isVideo(url) { return /\.(mp4|webm|ogg|mov|m4v)$/.test(url.split("?")[0].toLowerCase()); }
+
+        // ---- center states ----
+        function center(node) { centerMsg.innerHTML = ""; centerMsg.appendChild(node); centerMsg.hidden = false; jobsEl.hidden = true; reelHint.hidden = true; }
+        function msgNode(text, isErr) { return el("p", "lf-msg" + (isErr ? " is-err" : ""), text); }
+        function pendingNode() {
+          var d = el("div");
+          d.style.cssText = "max-width:420px;background:#fcf3e6;border:1px solid var(--gold);color:#7a5a17;padding:18px 20px;border-radius:14px;font-weight:600";
+          d.textContent = "Your account is pending approval. You’ll see jobs here once an admin approves you.";
+          return d;
+        }
+        function emptyNode() {
+          var e = el("div", "lf-empty");
+          var mark = el("div", "lf-mark"); mark.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='m21 21-4.3-4.3'/><circle cx='11' cy='11' r='7'/></svg>";
+          e.appendChild(mark); e.appendChild(el("h3", null, "No jobs posted yet")); e.appendChild(el("p", null, "Check back soon — new repair jobs show up here."));
+          return e;
+        }
+
+        // media nodes
+        function reelMedia(url) {
+          if (isVideo(url)) { var v = document.createElement("video"); v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.preload = "metadata"; return v; }
+          var img = document.createElement("img"); img.src = url; img.loading = "lazy"; img.alt = "job photo"; return img;
+        }
+        function galleryMedia(url) {
+          if (isVideo(url)) { var v = document.createElement("video"); v.src = url; v.controls = true; v.playsInline = true; v.preload = "metadata"; return v; }
+          var a = document.createElement("a"); a.href = url; a.rel = "noopener";
+          a.addEventListener("click", function (e) { e.preventDefault(); openLightbox(url); });
+          var img = document.createElement("img"); img.src = url; img.loading = "lazy"; img.alt = "job photo"; a.appendChild(img); return a;
+        }
+
+        // ---- a single full-screen job reel ----
+        function reelStat(iconSvg, label, value) {
+          var s = el("div", "lf-reel-stat");
+          var ic = el("span", "lf-reel-stat-ic"); ic.innerHTML = iconSvg; s.appendChild(ic);
+          var d = el("div");
+          d.appendChild(el("div", "lf-reel-stat-label", label));
+          d.appendChild(el("div", "lf-reel-stat-val", value));
+          s.appendChild(d);
+          return s;
+        }
+        function jobReel(j) {
+          var reel = el("div", "lf-reel");
+          var frame = el("div", "lf-reel-frame");
+
+          var first = (Array.isArray(j.media) && j.media.length) ? j.media[0] : null;
+          if (first && isMediaUrl(first)) { var m = el("div", "lf-reel-media"); m.appendChild(reelMedia(first)); frame.appendChild(m); }
+          else { var no = el("div", "lf-reel-noimg"); no.innerHTML = iconWrench; frame.appendChild(no); }
+          frame.appendChild(el("div", "lf-reel-scrim"));
+
+          var top = el("div", "lf-reel-top");
+          top.appendChild(el("span", "lf-reel-date", fmtDate(j.created_at)));
+          frame.appendChild(top);
+
+          var body = el("div", "lf-reel-body");
+          var meta = el("div", "lf-reel-meta");
+          if (j.category) meta.appendChild(reelStat(iconWrench, "Category", j.category));
+          if (j.urgency) meta.appendChild(reelStat(iconCal, "Timing", j.urgency));
+          meta.appendChild(reelStat(iconPin, "Area", j.zip || "—"));
+          body.appendChild(meta);
+          body.appendChild(el("p", "lf-reel-desc", j.description || "—"));
+          var actions = el("div", "lf-reel-actions");
+          var btn = el("button", "lf-reel-btn"); btn.type = "button"; btn.innerHTML = iconInfo + "<span>View details</span>";
+          btn.addEventListener("click", function () { openJobModal(j); });
+          actions.appendChild(btn);
+          body.appendChild(actions);
+          frame.appendChild(body);
+
+          reel.appendChild(frame);
+          return reel;
+        }
+
+        // play the in-view reel's video, pause the rest
+        function observe() {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              var vid = e.target.querySelector("video");
+              if (!vid) return;
+              if (e.isIntersecting && e.intersectionRatio >= 0.6) { vid.play().catch(function () {}); } else { vid.pause(); }
+            });
+          }, { root: jobsEl, threshold: [0, 0.6, 1] });
+          Array.prototype.slice.call(jobsEl.children).forEach(function (r) { io.observe(r); });
+        }
+
+        // ---- job details popup ----
+        var modal = el("div", "lf-jobmodal-overlay"); modal.hidden = true;
+        modal.innerHTML =
+          "<div class='lf-jobmodal' role='dialog' aria-modal='true' aria-label='Job details'>"
+          + "<button class='lf-jm-x' aria-label='Close'>" + iconX + "</button>"
+          + "<div class='lf-jm-hero' id='jmHero'></div>"
+          + "<div class='lf-jm-body'>"
+          +   "<div class='lf-jm-ref' id='jmRef'></div>"
+          +   "<p class='lf-jm-desc' id='jmDesc'></p>"
+          +   "<div class='lf-jm-meta'>"
+          +     "<div class='lf-jm-meta-item'><span class='lf-jm-meta-ic'>" + iconWrench + "</span><div><div class='lf-jm-meta-label'>Category</div><div class='lf-jm-meta-val' id='jmCat'></div></div></div>"
+          +     "<div class='lf-jm-meta-item'><span class='lf-jm-meta-ic'>" + iconCal + "</span><div><div class='lf-jm-meta-label'>Timing</div><div class='lf-jm-meta-val' id='jmTiming'></div></div></div>"
+          +     "<div class='lf-jm-meta-item'><span class='lf-jm-meta-ic'>" + iconPin + "</span><div><div class='lf-jm-meta-label'>Area</div><div class='lf-jm-meta-val' id='jmArea'></div></div></div>"
+          +     "<div class='lf-jm-meta-item'><span class='lf-jm-meta-ic'>" + iconClock + "</span><div><div class='lf-jm-meta-label'>Posted</div><div class='lf-jm-meta-val' id='jmPosted'></div></div></div>"
+          +   "</div>"
+          +   "<div id='jmThumbsWrap' hidden><div class='lf-jm-thumbs' id='jmThumbs'></div></div>"
+          + "</div>"
+          + "<div class='lf-jm-foot'><button class='btn btn-primary btn-lg' id='jmInterested'>I’m interested in this job</button><p class='lf-jm-note' id='jmNote'></p></div>"
+          + "</div>";
+        document.body.appendChild(modal);
+
+        function closeModal() { modal.classList.remove("open"); setTimeout(function () { modal.hidden = true; }, 240); }
+        modal.querySelector(".lf-jm-x").addEventListener("click", closeModal);
+        modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
+        // ---- image lightbox (opens over the details popup) ----
+        var lightbox = el("div", "lf-lightbox"); lightbox.hidden = true;
+        lightbox.innerHTML = "<button class='lf-lightbox-x' aria-label='Close'>" + iconX + "</button><img alt='Job photo'>";
+        document.body.appendChild(lightbox);
+        function openLightbox(url) { lightbox.querySelector("img").src = url; lightbox.hidden = false; requestAnimationFrame(function () { lightbox.classList.add("open"); }); }
+        function closeLightbox() { lightbox.classList.remove("open"); setTimeout(function () { lightbox.hidden = true; lightbox.querySelector("img").src = ""; }, 200); }
+        lightbox.addEventListener("click", function (e) { if (e.target.tagName !== "IMG") closeLightbox(); });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "Escape") return;
+          if (!lightbox.hidden) closeLightbox();
+          else if (!modal.hidden) closeModal();
+        });
+
+        function openJobModal(j) {
+          var hero = $("jmHero");
+          hero.innerHTML = ""; hero.classList.remove("noimg");
+          var media = (Array.isArray(j.media) ? j.media : []).filter(isMediaUrl);
+          if (media.length) {
+            var first = media[0];
+            if (isVideo(first)) { var v = document.createElement("video"); v.src = first; v.controls = true; v.playsInline = true; v.preload = "metadata"; hero.appendChild(v); }
+            else { var img = document.createElement("img"); img.src = first; img.alt = "job photo"; img.addEventListener("click", function () { openLightbox(first); }); hero.appendChild(img); }
+          } else {
+            hero.classList.add("noimg"); hero.innerHTML = iconWrench;
+          }
+          $("jmRef").textContent = "Job #" + j.id;
+          $("jmDesc").textContent = j.description || "—";
+          var cat = $("jmCat"); cat.innerHTML = ""; if (j.category) cat.appendChild(el("span", "lf-badge lf-badge--cat", j.category)); else cat.textContent = "—";
+          var tim = $("jmTiming"); tim.innerHTML = ""; if (j.urgency) tim.appendChild(el("span", "lf-badge " + urgClass(j.urgency), j.urgency)); else tim.textContent = "—";
+          $("jmArea").textContent = j.zip ? ("ZIP " + j.zip) : "Not given";
+          $("jmPosted").textContent = longDate(j.created_at) || "—";
+          var thumbs = $("jmThumbs"); thumbs.innerHTML = "";
+          var rest = media.slice(1);
+          $("jmThumbsWrap").hidden = !rest.length;
+          rest.forEach(function (u) { thumbs.appendChild(galleryMedia(u)); });
+          $("jmNote").textContent = "";
+          $("jmInterested").onclick = function () { $("jmNote").textContent = "Interest noted for Job #" + j.id + " — connecting you with the homeowner is coming soon."; };
+          modal.hidden = false; requestAnimationFrame(function () { modal.classList.add("open"); });
+        }
+
+        async function loadJobs(session) {
+          center(msgNode("Loading jobs…"));
+          var prof = await sb.from("profiles").select("role, approved").eq("id", session.user.id).maybeSingle();
+          var role = prof.data ? prof.data.role : "contractor";
+          AppShell.setUser({ email: session.user.email, role: role, onLogout: async function () { await sb.auth.signOut(); window.location.href = "index.html"; } });
+
+          if (!prof.error && prof.data && prof.data.role === "contractor" && prof.data.approved === false) { center(pendingNode()); return; }
+
+          var res = await sb.rpc("list_jobs_for_contractor");
+          if (res.error) { center(msgNode("Couldn’t load jobs: " + res.error.message, true)); return; }
+          var jobs = res.data || [];
+          if (!jobs.length) { center(emptyNode()); return; }
+
+          jobsEl.innerHTML = "";
+          jobs.forEach(function (j) { jobsEl.appendChild(jobReel(j)); });
+          centerMsg.hidden = true;
+          jobsEl.hidden = false;
+          if (jobs.length > 1) {
+            reelHint.hidden = false;
+            jobsEl.addEventListener("scroll", function () { reelHint.hidden = true; }, { once: true });
+          }
+          observe();
+        }
+
+        if (!sb) { center(msgNode("Sign-in isn’t configured yet (missing Supabase keys).", true)); return; }
+        sb.auth.getSession().then(function (r) {
+          if (!r.data.session) { window.location.href = "login.html"; return; }
+          loadJobs(r.data.session);
+        });
+      })();
+    </script>
+  </body>
+</html>

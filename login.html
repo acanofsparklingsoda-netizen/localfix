@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log in | Local Fix</title>
+    <meta name="description" content="Log in to Local Fix — for local workers and admins." />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="index.html" aria-label="Local Fix home"><img class="brand-logo" src="logos/Localfix-HorzontalLogoNewBLACK.png" alt="Local Fix" /></a>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="post-job.html">Post My Problem</a>
+          <a href="for-workers.html">For Workers</a>
+          <a href="contact.html">Contact</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-primary" href="signup.html">Sign up</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-badge"><img src="favicon.png" alt="" /></div>
+        <h1>Welcome back</h1>
+        <p class="sub">Log in to your worker or admin account.</p>
+
+        <div class="auth-field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" placeholder="you@email.com" />
+        </div>
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <button class="btn btn-primary btn-lg auth-submit" id="loginBtn" type="button">Log in</button>
+        <p class="auth-msg" id="msg" role="status" aria-live="polite"></p>
+
+        <p class="auth-hint">Homeowners don’t need an account — just <a href="post-job.html">post your problem</a>.</p>
+        <div class="auth-switch">New to Local Fix? <a href="signup.html">Create a worker account</a></div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+      (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var emailIn = $("email"), passIn = $("password"), loginBtn = $("loginBtn"), msg = $("msg");
+
+        var ready = window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY &&
+                    !/YOUR-/.test(window.SUPABASE_URL + window.SUPABASE_ANON_KEY);
+        var sb = ready ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
+
+        function say(t, kind) { msg.textContent = t || ""; msg.className = "auth-msg" + (kind ? " " + kind : ""); }
+
+        async function routeByRole(session) {
+          var dest = "contractors.html";
+          try {
+            var prof = await sb.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+            if (prof.data && prof.data.role === "admin") dest = "admin.html";
+          } catch (e) {}
+          window.location.href = dest;
+        }
+
+        if (!sb) { say("Sign-in isn’t configured yet (missing Supabase keys).", "err"); return; }
+        sb.auth.getSession().then(function (r) { if (r.data.session) routeByRole(r.data.session); });
+
+        loginBtn.addEventListener("click", async function () {
+          var email = emailIn.value.trim(), password = passIn.value;
+          if (!email || !password) { say("Enter your email and password.", "err"); return; }
+          loginBtn.disabled = true; say("Signing in…");
+          var res = await sb.auth.signInWithPassword({ email: email, password: password });
+          loginBtn.disabled = false;
+          if (res.error) { say(res.error.message, "err"); return; }
+          say("Welcome back — taking you in…", "ok");
+          routeByRole(res.data.session);
+        });
+        passIn.addEventListener("keydown", function (e) { if (e.key === "Enter") loginBtn.click(); });
+      })();
+    </script>
+  </body>
+</html>

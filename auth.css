@@ -1,0 +1,89 @@
+/* auth.css — centered-card layout for the Log in / Sign up pages.
+   Uses the LocalFix design tokens from styles.css (load styles.css first). */
+
+.auth-wrap {
+  min-height: calc(100vh - 73px); /* viewport minus the sticky header */
+  display: grid;
+  place-items: center;
+  padding: 40px 16px 56px;
+}
+
+.auth-card {
+  width: min(424px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 38px 34px 30px;
+  box-shadow: var(--shadow);
+}
+
+.auth-badge {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+}
+.auth-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.auth-card h1 {
+  text-align: center;
+  font-size: 1.65rem;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+.auth-card .sub {
+  text-align: center;
+  color: var(--muted);
+  margin: 0 0 26px;
+}
+
+.auth-field { margin-bottom: 16px; }
+.auth-field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.94rem;
+}
+.auth-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.auth-field input:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(92, 173, 108, 0.18);
+}
+
+.auth-submit { width: 100%; margin-top: 10px; }
+.auth-msg {
+  margin-top: 14px;
+  font-weight: 600;
+  min-height: 1.2em;
+  text-align: center;
+}
+.auth-msg.err { color: var(--clay); }
+.auth-msg.ok { color: var(--green-dark); }
+
+.auth-hint {
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.auth-hint a { color: var(--green-dark); font-weight: 700; }
+
+.auth-switch {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  color: var(--muted);
+}
+.auth-switch a { color: var(--green-dark); font-weight: 800; }

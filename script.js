@@ -29,9 +29,176 @@ function wireForm(formId, successId) {
   });
 }
 
-wireForm("#jobForm", "#jobSuccess");
-wireForm("#workerForm", "#workerSuccess");
 wireForm("#contactForm", "#contactSuccess");
+
+// Post My Problem form -> upload media to Supabase Storage, insert a row in the
+// job_submissions table (with the file URLs), then show the confirmation popup.
+(function wireJobForm() {
+  const form = document.querySelector("#jobForm");
+  const modal = document.querySelector("#jobModal");
+  const status = document.querySelector("#jobStatus");
+  if (!form || !modal) {
+    return;
+  }
+
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const closeBtn = document.querySelector("#jobModalClose");
+  const BUCKET = "job-media";
+  const TABLE = "job_submissions";
+  let started = Date.now(); // time gate: blocks instant bot posts
+
+  // Build the Supabase client (config lives in supabase-config.js).
+  const ready =
+    window.supabase &&
+    window.SUPABASE_URL &&
+    window.SUPABASE_ANON_KEY &&
+    !/YOUR-/.test(window.SUPABASE_URL + window.SUPABASE_ANON_KEY);
+  // Always post as an anonymous public visitor — even if an admin/worker is logged
+  // in. Posting a job is a public action, so the request must run under the anon
+  // role (which the RLS policies allow). persistSession:false ignores any saved login.
+  const sb = ready
+    ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null;
+
+  function say(message, ok) {
+    if (!status) {
+      return;
+    }
+    status.textContent = message || "";
+    status.className = "form-status" + (message ? (ok ? " is-ok" : " is-err") : "");
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    // next frame so the CSS transition runs
+    requestAnimationFrame(() => modal.classList.add("open"));
+    if (closeBtn) {
+      closeBtn.focus();
+    }
+  }
+
+  function closeModal() {
+    modal.classList.remove("open");
+    const done = () => {
+      modal.hidden = true;
+      modal.removeEventListener("transitionend", done);
+    };
+    modal.addEventListener("transitionend", done);
+    // fallback in case transitionend doesn't fire
+    setTimeout(done, 350);
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeModal);
+  }
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+      closeModal();
+    }
+  });
+
+  // Safe-ish object key for Storage: keep the extension, strip the rest.
+  function storageKey(file, index) {
+    const dot = file.name.lastIndexOf(".");
+    const ext = dot > -1 ? file.name.slice(dot).toLowerCase().replace(/[^a-z0-9.]/g, "") : "";
+    const rand = Math.random().toString(36).slice(2, 8);
+    return `submissions/${Date.now()}-${index}-${rand}${ext}`;
+  }
+
+  // Upload every attached file, return an array of public URLs.
+  async function uploadMedia() {
+    const urls = [];
+    if (!mediaInput || !mediaInput.files.length) {
+      return urls;
+    }
+    const files = Array.from(mediaInput.files);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const key = storageKey(file, i);
+      const { error } = await sb.storage.from(BUCKET).upload(key, file, {
+        cacheControl: "3600",
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (error) {
+        throw error;
+      }
+      const { data } = sb.storage.from(BUCKET).getPublicUrl(key);
+      urls.push(data.publicUrl);
+    }
+    return urls;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    // Honeypot: a real person never fills this. Pretend it worked, do nothing.
+    if (form.website_trap && form.website_trap.value) {
+      openModal();
+      form.reset();
+      return;
+    }
+    if (!form.reportValidity()) {
+      return;
+    }
+    // Time gate: instant submits are almost always bots.
+    if (Date.now() - started < 3000) {
+      say("That was a little too quick — give it a moment and try again.", false);
+      return;
+    }
+    if (!sb) {
+      say("Submissions aren’t configured yet (missing Supabase keys). See SUPABASE-SETUP.md.", false);
+      return;
+    }
+
+    const original = submitBtn ? submitBtn.textContent : "";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+    }
+    say("", true);
+
+    try {
+      const media = await uploadMedia();
+      const row = {
+        category: form.category ? form.category.value : null,
+        description: form.description ? form.description.value : null,
+        zip: form.location ? form.location.value : null,
+        urgency: form.urgency ? form.urgency.value : null,
+        name: form.name ? form.name.value : null,
+        phone: form.phone ? form.phone.value : null,
+        email: form.email ? form.email.value : null,
+        consent: !!(form.consent && form.consent.checked),
+        media: media,
+        referer: document.referrer || window.location.href,
+      };
+      const { error } = await sb.from(TABLE).insert(row);
+      if (error) {
+        throw error;
+      }
+      openModal();
+      form.reset();
+      started = Date.now();
+      if (fileList) {
+        fileList.textContent = "";
+      }
+    } catch (err) {
+      say((err && err.message) || "Something went wrong. Please try again.", false);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = original;
+      }
+    }
+  });
+})();
 
 // Basic fade-up reveal as sections scroll into view.
 (function revealOnScroll() {

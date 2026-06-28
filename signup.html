@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign up | Local Fix for Workers</title>
+    <meta name="description" content="Create a Local Fix worker account to browse and respond to repair jobs near you." />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="index.html" aria-label="Local Fix home"><img class="brand-logo" src="logos/Localfix-HorzontalLogoNewBLACK.png" alt="Local Fix" /></a>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="post-job.html">Post My Problem</a>
+          <a href="for-workers.html">For Workers</a>
+          <a href="contact.html">Contact</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-primary" href="login.html">Log in</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-badge"><img src="favicon.png" alt="" /></div>
+        <h1>Create your account</h1>
+        <p class="sub">For local workers who want to pick up jobs.</p>
+
+        <div class="auth-field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" placeholder="you@email.com" />
+        </div>
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="new-password" placeholder="At least 6 characters" />
+        </div>
+        <button class="btn btn-primary btn-lg auth-submit" id="signupBtn" type="button">Create account</button>
+        <p class="auth-msg" id="msg" role="status" aria-live="polite"></p>
+
+        <p class="auth-hint">Just need a repair done? You don’t need an account — <a href="post-job.html">post your problem</a>.</p>
+        <div class="auth-switch">Already have an account? <a href="login.html">Log in</a></div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+      (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var emailIn = $("email"), passIn = $("password"), signupBtn = $("signupBtn"), msg = $("msg");
+
+        var ready = window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY &&
+                    !/YOUR-/.test(window.SUPABASE_URL + window.SUPABASE_ANON_KEY);
+        var sb = ready ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
+
+        function say(t, kind) { msg.textContent = t || ""; msg.className = "auth-msg" + (kind ? " " + kind : ""); }
+
+        if (!sb) { say("Sign-up isn’t configured yet (missing Supabase keys).", "err"); return; }
+        sb.auth.getSession().then(function (r) { if (r.data.session) window.location.href = "contractors.html"; });
+
+        signupBtn.addEventListener("click", async function () {
+          var email = emailIn.value.trim(), password = passIn.value;
+          if (!email || !password) { say("Enter your email and a password.", "err"); return; }
+          if (password.length < 6) { say("Password must be at least 6 characters.", "err"); return; }
+          signupBtn.disabled = true; say("Creating your account…");
+          var res = await sb.auth.signUp({ email: email, password: password });
+          signupBtn.disabled = false;
+          if (res.error) { say(res.error.message, "err"); return; }
+          if (res.data.session) {
+            say("You’re in — taking you to the jobs board…", "ok");
+            window.location.href = "contractors.html";
+          } else {
+            say("Account created! Check your email to confirm, then log in.", "ok");
+          }
+        });
+        passIn.addEventListener("keydown", function (e) { if (e.key === "Enter") signupBtn.click(); });
+      })();
+    </script>
+  </body>
+</html>

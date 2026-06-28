@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Local Fix — Admin</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body class="lf-app">
+    <main class="lf-main">
+      <div class="lf-head">
+        <div>
+          <h1>Job submissions</h1>
+          <p class="lf-sub" id="count"></p>
+        </div>
+        <div class="lf-actions">
+          <button class="lf-btn" id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+      <p class="lf-msg" id="status">Loading…</p>
+      <div class="lf-feed" id="list"></div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app-shell.js"></script>
+    <script>
+      (function () {
+        AppShell.appHeader();
+        var STATUSES = ["Submitted", "Reviewing", "Sent to worker", "Worker interested", "Connected", "Completed", "Cancelled"];
+
+        var $ = function (id) { return document.getElementById(id); };
+        var statusEl = $("status"), listEl = $("list"), countEl = $("count"), refreshBtn = $("refreshBtn");
+
+        var ready = window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY &&
+                    !/YOUR-/.test(window.SUPABASE_URL + window.SUPABASE_ANON_KEY);
+        var sb = ready ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null;
+
+        function goLogin() { window.location.href = "login.html"; }
+        function setStatus(text, isErr) { statusEl.hidden = !text; statusEl.textContent = text || ""; statusEl.className = "lf-msg" + (isErr ? " is-err" : ""); }
+        function fmtDate(iso) { if (!iso) return ""; var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString(); }
+        function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+
+        var iconTools = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.6-.6-2.5 2.6-2.4Z'/></svg>";
+        var iconCal = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4.5' width='18' height='16' rx='2.5'/><path d='M3 9h18M8 2.5v4M16 2.5v4'/></svg>";
+        function iconBadge(iconSvg, cls, text) { var b = el("span", cls); b.innerHTML = iconSvg; b.appendChild(el("span", null, text)); return b; }
+
+        function urgClass(u) {
+          var t = (u || "").toLowerCase();
+          if (t.indexOf("today") > -1) return "lf-badge--today";
+          if (t.indexOf("flex") > -1) return "lf-badge--flex";
+          return "lf-badge--week";
+        }
+        function statusClass(s) {
+          var t = (s || "").toLowerCase();
+          if (t.indexOf("review") > -1) return "lf-status--reviewing";
+          if (t.indexOf("sent") > -1) return "lf-status--sent";
+          if (t.indexOf("interest") > -1) return "lf-status--interested";
+          if (t.indexOf("connect") > -1) return "lf-status--connected";
+          if (t.indexOf("complet") > -1) return "lf-status--completed";
+          if (t.indexOf("cancel") > -1) return "lf-status--cancelled";
+          return "lf-status--submitted";
+        }
+
+        function mediaNode(url) {
+          if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return el("span", "lf-nomedia", String(url));
+          var clean = url.split("?")[0].toLowerCase();
+          if (/\.(jpe?g|png|gif|webp|avif|bmp|svg)$/.test(clean)) {
+            var a = el("a"); a.href = url; a.target = "_blank"; a.rel = "noopener";
+            var img = el("img"); img.src = url; img.loading = "lazy"; img.alt = "submission photo";
+            a.appendChild(img); return a;
+          }
+          if (/\.(mp4|webm|ogg|mov|m4v)$/.test(clean)) { var v = el("video"); v.src = url; v.controls = true; v.preload = "metadata"; return v; }
+          var link = el("a", "lf-media-file", url.split("/").pop() || "Open file");
+          link.href = url; link.target = "_blank"; link.rel = "noopener"; return link;
+        }
+
+        function block(label) { var s = el("div", "lf-block"); s.appendChild(el("div", "lf-block-label", label)); return s; }
+        function field(label, valueNode) {
+          var f = el("div"); f.appendChild(el("span", "lf-field-label", label));
+          var v = el("div", "lf-field-value"); v.appendChild(valueNode); f.appendChild(v); return f;
+        }
+        function linkNode(scheme, value) { if (!value) return document.createTextNode("—"); var a = el("a", null, value); a.href = scheme + value; return a; }
+        function textNode(value) { return document.createTextNode(value != null && value !== "" ? String(value) : "—"); }
+
+        // Editable status control: change it and it saves to Supabase.
+        function statusControl(row) {
+          var wrap = el("div", "lf-statusedit");
+          var sel = el("select");
+          STATUSES.forEach(function (s) {
+            var o = el("option", null, s); o.value = s;
+            if ((row.status || "Submitted") === s) o.selected = true;
+            sel.appendChild(o);
+          });
+          var note = el("span", "lf-statusedit-note");
+          sel.addEventListener("change", async function () {
+            var next = sel.value, prev = row.status;
+            sel.disabled = true; note.textContent = "Saving…"; note.className = "lf-statusedit-note";
+            var res = await sb.from("job_submissions").update({ status: next }).eq("id", row.id);
+            sel.disabled = false;
+            if (res.error) {
+              note.textContent = "Couldn’t save"; note.className = "lf-statusedit-note is-err";
+              sel.value = prev || "Submitted";
+            } else {
+              row.status = next; note.textContent = "Saved"; note.className = "lf-statusedit-note is-ok";
+              setTimeout(function () { note.textContent = ""; }, 1500);
+            }
+          });
+          wrap.appendChild(el("span", "lf-statusedit-label", "Status"));
+          wrap.appendChild(sel); wrap.appendChild(note);
+          return wrap;
+        }
+
+        function card(row) {
+          var c = el("div", "lf-card");
+          var head = el("div", "lf-card-head");
+          head.appendChild(el("h2", "lf-card-title", row.name || "(no name)"));
+          var hr = el("div", "lf-card-head-right");
+          if (row.status) hr.appendChild(el("span", "lf-status " + statusClass(row.status), row.status));
+          hr.appendChild(el("span", "lf-card-date", fmtDate(row.created_at)));
+          head.appendChild(hr);
+          c.appendChild(head);
+
+          var badges = el("div", "lf-badges");
+          if (row.category) badges.appendChild(iconBadge(iconTools, "lf-badge lf-badge--cat", row.category));
+          if (row.urgency) badges.appendChild(iconBadge(iconCal, "lf-badge " + urgClass(row.urgency), row.urgency));
+          if (badges.childNodes.length) c.appendChild(badges);
+
+          c.appendChild(el("div", "lf-rule"));
+
+          var prob = block("Problem"); prob.appendChild(el("p", "lf-desc", row.description || "—")); c.appendChild(prob);
+
+          var con = block("Contact");
+          var fields = el("div", "lf-fields");
+          fields.appendChild(field("Phone", linkNode("tel:", row.phone)));
+          fields.appendChild(field("Email", linkNode("mailto:", row.email)));
+          fields.appendChild(field("ZIP code", textNode(row.zip)));
+          fields.appendChild(field("Consent to contact", textNode(row.consent ? "Yes" : "No")));
+          con.appendChild(fields); c.appendChild(con);
+
+          var med = block("Photos & video");
+          if (Array.isArray(row.media) && row.media.length) {
+            var m = el("div", "lf-media"); row.media.forEach(function (u) { m.appendChild(mediaNode(u)); }); med.appendChild(m);
+          } else { med.appendChild(el("div", "lf-nomedia", "No photos or videos attached.")); }
+          c.appendChild(med);
+
+          c.appendChild(statusControl(row));
+          if (row.referer) c.appendChild(el("div", "lf-foot", "Source: " + row.referer));
+          return c;
+        }
+
+        function emptyState() {
+          var e = el("div", "lf-empty");
+          var mark = el("div", "lf-mark");
+          mark.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='M3 13h4l2 3h6l2-3h4'/><path d='M5 13V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7'/></svg>";
+          e.appendChild(mark);
+          e.appendChild(el("h3", null, "No submissions yet"));
+          e.appendChild(el("p", null, "New job posts from homeowners will show up here."));
+          return e;
+        }
+
+        async function loadJobs() {
+          setStatus("Loading submissions…", false); listEl.innerHTML = ""; countEl.textContent = "";
+          var res = await sb.from("job_submissions").select("*").order("created_at", { ascending: false });
+          if (res.error) { setStatus("Error: " + res.error.message, true); return; }
+          var rows = res.data || [];
+          setStatus("", false);
+          countEl.textContent = rows.length + (rows.length === 1 ? " submission" : " submissions");
+          if (!rows.length) { listEl.appendChild(emptyState()); return; }
+          rows.forEach(function (row) { listEl.appendChild(card(row)); });
+        }
+
+        async function afterAuth(session) {
+          var prof = await sb.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+          if (prof.error) { setStatus("Couldn’t check your role: " + prof.error.message, true); return; }
+          if (!prof.data || prof.data.role !== "admin") { window.location.href = "contractors.html"; return; }
+          AppShell.setUser({
+            email: session.user.email,
+            role: "admin",
+            onLogout: async function () { await sb.auth.signOut(); window.location.href = "index.html"; },
+          });
+          loadJobs();
+        }
+
+        refreshBtn.addEventListener("click", loadJobs);
+
+        if (!sb) { setStatus("Supabase isn’t configured (missing keys in supabase-config.js).", true); return; }
+        sb.auth.getSession().then(function (r) { if (r.data.session) { afterAuth(r.data.session); } else { goLogin(); } });
+      })();
+    </script>
+  </body>
+</html>

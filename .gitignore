@@ -1,0 +1,16 @@
+# Service-account key — NEVER commit this to a public repo.
+# Upload it to your PHP host by hand (next to submit-job.php).
+credentials.json
+
+# PHP error log written by submit-job.php
+php-errors.log
+
+# Service-key admin tool (full-access master key) — keep it OFF the public site.
+# The login-based admin.html is safe to deploy; this fallback is not.
+admin-servicekey.html
+
+# OS noise
+.DS_Store
+
+# Local editor/session files
+.claude/

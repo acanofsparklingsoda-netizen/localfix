@@ -19,8 +19,19 @@ workers respond). Plain HTML/CSS/JS — no build step, no server required.
 
 `.nojekyll` is included so GitHub serves the files as-is (no Jekyll processing).
 
-## Note on forms
-The contact / Post My Problem / worker forms currently show a success message in the
-browser but **do not send the data anywhere** — GitHub Pages cannot run server-side code
-(no PHP). To actually receive submissions, point each form at a static-friendly form
-service (e.g. Web3Forms, Formspree, or FormSubmit). Not wired up yet.
+## Forms
+
+The **Post My Problem** form (`post-job.html`) sends each submission to **Supabase**:
+uploaded photos/videos go to **Supabase Storage**, the form fields go to a Postgres table
+(`job_submissions`) with the file URLs, then the page shows a confirmation popup. It runs
+from the browser via `supabase-js` — **no server needed**, so it works on GitHub Pages.
+See **SUPABASE-SETUP.md** for the one-time setup (create a free project, run
+`supabase-setup.sql`, paste your URL + anon key into `supabase-config.js`).
+
+The contact / worker forms still just show an inline success message and don't send data
+anywhere yet — they can be wired to Supabase the same way later.
+
+> **Older Google Sheets path (unused):** `submit-job.php` + `credentials.json` +
+> `SHEETS-SETUP.md` implement an alternate Google Sheets integration (PHP service account).
+> The form no longer uses it, but it's kept in the repo in case you want a Sheet too.
+> `credentials.json` is git-ignored — never commit it to a public repo.
