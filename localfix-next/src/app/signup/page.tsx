@@ -3,13 +3,13 @@ import { AuthPageShell } from "@/components/SiteShell";
 import { SignupForm } from "@/components/SignupForm";
 
 export const metadata: Metadata = {
-  title: "Sign up | Local Fix for Workers",
-  description: "Create a Local Fix worker account to browse and respond to repair jobs near you.",
+  title: "Sign up | Local Fix",
+  description: "Create a Local Fix account to post repair problems or browse local worker leads.",
 };
 
 export default function SignupPage() {
   return (
-    <AuthPageShell ctaHref="/login" ctaLabel="Log in">
+    <AuthPageShell>
       <SignupForm />
     </AuthPageShell>
   );

@@ -101,17 +101,13 @@ export function MarketingShell({
 }
 
 export function AuthPageShell({
-  ctaHref,
-  ctaLabel,
   children,
 }: {
-  ctaHref: string;
-  ctaLabel: string;
   children: ReactNode;
 }) {
   return (
     <>
-      <SiteHeader active="" cta={<Link className="btn btn-primary" href={ctaHref}>{ctaLabel}</Link>} />
+      <SiteHeader active="" />
       {children}
     </>
   );

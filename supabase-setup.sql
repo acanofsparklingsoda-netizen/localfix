@@ -20,18 +20,17 @@ create table if not exists public.job_submissions (
   consent     boolean default false,
   media       text[],        -- public URLs of the uploaded photos/videos
   referer     text,
+  owner_id    uuid references auth.users(id) on delete set null,
   -- Workflow status the admin moves a job through.
   -- Submitted | Reviewing | Sent to worker | Worker interested | Connected | Completed | Cancelled
   status      text not null default 'Submitted'
 );
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 2) Row Level Security: lock the table down, then allow ONLY public inserts
+-- 2) Row Level Security: lock the table down, then allow job inserts
 -- ────────────────────────────────────────────────────────────────────────────
 alter table public.job_submissions enable row level security;
 
--- The form always posts anonymously (even if a user is logged in — see script.js),
--- so the anon role is all that needs insert access here.
 drop policy if exists "anon can submit jobs" on public.job_submissions;
 drop policy if exists "anyone can submit jobs" on public.job_submissions;
 create policy "anon can submit jobs"
@@ -39,6 +38,13 @@ create policy "anon can submit jobs"
   for insert
   to anon
   with check (true);
+
+drop policy if exists "authenticated users can submit jobs" on public.job_submissions;
+create policy "authenticated users can submit jobs"
+  on public.job_submissions
+  for insert
+  to authenticated
+  with check (owner_id = auth.uid() or owner_id is null);
 
 -- ...but there is NO select/update/delete policy for anon, so no one on the
 -- public site can read, change, or delete submissions. You see them in the
@@ -60,6 +66,13 @@ create policy "anon can upload job media"
   on storage.objects
   for insert
   to anon
+  with check (bucket_id = 'job-media');
+
+drop policy if exists "authenticated users can upload job media" on storage.objects;
+create policy "authenticated users can upload job media"
+  on storage.objects
+  for insert
+  to authenticated
   with check (bucket_id = 'job-media');
 
 -- The bucket is public, so the uploaded files are viewable via their public URL

@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
-import { AccountMenu, AccountUser, GuestAccountMenu } from "./AccountChrome";
+import { useAuth } from "./AuthProvider";
+import { AccountMenu, GuestAccountMenu } from "./AccountChrome";
 
 function GuestAuthNav() {
+  const pathname = usePathname();
+  const loginHref = `/login?next=${encodeURIComponent(pathname)}`;
+
   return (
     <>
-      <Link className="nav-btn nav-login" href="/login">
+      <Link className="nav-btn nav-login" href={loginHref}>
         Log in
       </Link>
       <GuestAccountMenu />
@@ -16,41 +20,20 @@ function GuestAuthNav() {
   );
 }
 
+function LoadingAuthNav() {
+  return (
+    <span className="nav-auth-loading" aria-hidden="true">
+      <span className="nav-auth-loading-pill" />
+    </span>
+  );
+}
+
 export function AuthNav() {
-  const [user, setUser] = useState<AccountUser | null>(null);
-  const [ready, setReady] = useState(false);
+  const router = useRouter();
+  const { ready, user } = useAuth();
 
-  useEffect(() => {
-    if (!supabaseConfigured) {
-      setReady(true);
-      return;
-    }
-
-    const sb = getSupabase();
-
-    async function resolveUser(sessionUser: { id: string; email?: string } | null | undefined) {
-      if (!sessionUser) {
-        setUser(null);
-        setReady(true);
-        return;
-      }
-      let role = "contractor";
-      try {
-        const prof = await sb.from("profiles").select("role").eq("id", sessionUser.id).maybeSingle();
-        if (prof.data?.role) role = String(prof.data.role);
-      } catch {
-        role = "contractor";
-      }
-      setUser({ email: sessionUser.email || "", role });
-      setReady(true);
-    }
-
-    sb.auth.getSession().then((result) => resolveUser(result.data.session?.user));
-    const { data } = sb.auth.onAuthStateChange((_event, session) => resolveUser(session?.user));
-    return () => data.subscription.unsubscribe();
-  }, []);
-
-  if (!supabaseConfigured || !ready) return <GuestAuthNav />;
+  if (!supabaseConfigured) return <GuestAuthNav />;
+  if (!ready) return <LoadingAuthNav />;
 
   if (!user) {
     return <GuestAuthNav />;
@@ -61,7 +44,7 @@ export function AuthNav() {
       user={user}
       onLogout={async () => {
         await getSupabase().auth.signOut();
-        window.location.reload();
+        router.push("/");
       }}
     />
   );

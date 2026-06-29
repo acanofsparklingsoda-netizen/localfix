@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AccountDrawer, AccountUser } from "./AccountChrome";
+import { AppHeaderFallback, RoleAppHeader } from "./AccountChrome";
+import { type AuthUser, useAuth } from "./AuthProvider";
 import { BodyClass } from "./BodyClass";
-import { BriefcaseIcon, CalendarIcon, ClockIcon, DoubleDownIcon, InfoIcon, PinIcon, SearchIcon, UserIcon, WrenchIcon, XIcon } from "./Icons";
+import { CalendarIcon, ClockIcon, DoubleDownIcon, InfoIcon, PinIcon, SearchIcon, WrenchIcon, XIcon } from "./Icons";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
-import { assetPath } from "@/lib/paths";
 
 type Job = {
   id: string | number;
@@ -239,28 +238,30 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
 export function ContractorBoard() {
   const router = useRouter();
+  const { ready: authReady, profileReady, user } = useAuth();
   const reelsRef = useRef<HTMLDivElement>(null);
-  const [user, setUser] = useState<AccountUser | null>(null);
+  const loadedFor = useRef("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [center, setCenter] = useState<React.ReactNode>("Loading jobs...");
   const [showJobs, setShowJobs] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [lightbox, setLightbox] = useState("");
 
   const centerNode = useMemo(() => (typeof center === "string" ? <p className="lf-msg">{center}</p> : center), [center]);
 
-  async function loadJobs(sessionUser: { id: string; email?: string }) {
+  async function loadJobs(sessionUser: AuthUser) {
     const sb = getSupabase();
     setCenter("Loading jobs...");
-    const prof = await sb.from("profiles").select("role, approved").eq("id", sessionUser.id).maybeSingle();
-    const role = prof.data?.role ? String(prof.data.role) : "contractor";
-    setUser({ email: sessionUser.email || "", role });
+    const role = sessionUser.role;
+    if (role === "homeowner") {
+      router.push("/post-job");
+      return;
+    }
 
-    if (!prof.error && prof.data?.role === "contractor" && prof.data.approved === false) {
+    if (role === "contractor" && sessionUser.approved === false) {
       setShowJobs(false);
-      setCenter(<div style={{ maxWidth: 420, background: "#fcf3e6", border: "1px solid var(--gold)", color: "#7a5a17", padding: "18px 20px", borderRadius: 14, fontWeight: 600 }}>Your account is pending approval. You will see jobs here once an admin approves you.</div>);
+      setCenter(<div className="lf-pending-card">Your account is pending approval. You will see jobs here once an admin approves you.</div>);
       return;
     }
 
@@ -286,12 +287,23 @@ export function ContractorBoard() {
       setCenter(<p className="lf-msg is-err">Sign-in is not configured yet (missing Supabase keys).</p>);
       return;
     }
-    getSupabase().auth.getSession().then((result) => {
-      if (!result.data.session) router.push("/login");
-      else loadJobs(result.data.session.user);
-    });
+    if (!authReady || !profileReady) {
+      setCenter("Loading jobs...");
+      return;
+    }
+    if (!user) {
+      router.push("/login?next=/contractors");
+      return;
+    }
+    if (user.role === "homeowner") {
+      router.push("/post-job");
+      return;
+    }
+    if (loadedFor.current === user.id) return;
+    loadedFor.current = user.id;
+    loadJobs(user);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [authReady, profileReady, router, user?.id, user?.role, user?.approved]);
 
   useEffect(() => {
     if (!showJobs || !reelsRef.current) return;
@@ -319,12 +331,7 @@ export function ContractorBoard() {
   return (
     <>
       <BodyClass className="lf-app lf-reels-page" />
-      <header className="lf-topbar">
-        <Link className="brand" href="/" aria-label="Local Fix home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="brand-logo" src={assetPath("/logos/Localfix-HorzontalLogoNewBLACK.png")} alt="Local Fix" />
-        </Link>
-      </header>
+      {user && user.role !== "homeowner" ? <RoleAppHeader user={user} activeHref="/contractors" onLogout={logout} /> : <AppHeaderFallback activeHref="/contractors" />}
       <main className="lf-reels-main">
         {showHint ? (
           <div className="lf-reel-hint">
@@ -341,18 +348,6 @@ export function ContractorBoard() {
         </div>
       </main>
 
-      <nav className="lf-tabbar" aria-label="Worker navigation">
-        <Link className="lf-tab is-active" href="/contractors">
-          <BriefcaseIcon />
-          <span>Jobs</span>
-        </Link>
-        <button className="lf-tab" type="button" onClick={() => setDrawerOpen(true)}>
-          <UserIcon />
-          <span>Profile</span>
-        </button>
-      </nav>
-
-      {user ? <AccountDrawer open={drawerOpen} user={user} onClose={() => setDrawerOpen(false)} onLogout={logout} /> : null}
       {activeJob ? <JobModal job={activeJob} onClose={() => setActiveJob(null)} onLightbox={setLightbox} /> : null}
       {lightbox ? <Lightbox url={lightbox} onClose={() => setLightbox("")} /> : null}
     </>

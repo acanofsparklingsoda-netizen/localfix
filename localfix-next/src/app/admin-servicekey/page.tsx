@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdminServiceKeyPage } from "@/components/AdminServiceKeyPage";
+import { SiteHeader } from "@/components/SiteShell";
 
 export const metadata: Metadata = {
   title: "Local Fix - Job Submissions (private)",
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminServiceKeyRoute() {
-  return <AdminServiceKeyPage />;
+  return (
+    <>
+      <SiteHeader active="" />
+      <AdminServiceKeyPage />
+    </>
+  );
 }

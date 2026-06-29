@@ -6,15 +6,13 @@ import { createPortal } from "react-dom";
 import { type ReactNode, useEffect, useState } from "react";
 import {
   BriefcaseIcon,
-  CameraIcon,
+  ChartIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  ClockIcon,
   InboxIcon,
   LogoutIcon,
-  SearchIcon,
+  MessageIcon,
   UserIcon,
-  WrenchIcon,
   XIcon,
 } from "./Icons";
 import { assetPath } from "@/lib/paths";
@@ -24,8 +22,14 @@ export type AccountUser = {
   role: string;
 };
 
+type MainNavKey = "home" | "post-job" | "for-workers" | "contact" | "";
+
 function initial(email: string) {
   return (email.trim().charAt(0) || "?").toUpperCase();
+}
+
+function mainNavClass(active: MainNavKey, key: MainNavKey) {
+  return active === key ? "active" : undefined;
 }
 
 function DrawerPortal({ children }: { children: ReactNode }) {
@@ -40,12 +44,19 @@ function DrawerPortal({ children }: { children: ReactNode }) {
   return createPortal(children, document.body);
 }
 
-const siteLinks = [
-  { label: "Home", href: "/", icon: <SearchIcon /> },
-  { label: "Post My Problem", href: "/post-job", icon: <CameraIcon /> },
-  { label: "For Workers", href: "/for-workers", icon: <WrenchIcon /> },
-  { label: "Contact", href: "/contact", icon: <ClockIcon /> },
+const workerDrawerLinks = [
+  { label: "Jobs", href: "/contractors", icon: <BriefcaseIcon /> },
+  { label: "Dashboard", href: "/contractors/dashboard", icon: <ChartIcon /> },
+  { label: "Chats", href: "/chats", icon: <MessageIcon /> },
 ];
+
+const adminDrawerLinks = [...workerDrawerLinks, { label: "Admin", href: "/admin", icon: <InboxIcon /> }];
+
+function mainActiveForApp(activeHref: string): MainNavKey {
+  if (activeHref === "/post-job") return "post-job";
+  if (activeHref.startsWith("/contractors")) return "for-workers";
+  return "";
+}
 
 export function AccountDrawer({
   open,
@@ -60,13 +71,8 @@ export function AccountDrawer({
 }) {
   const pathname = usePathname();
   const isAdmin = user.role === "admin";
-  const roleLinks = isAdmin
-    ? [
-        { label: "Admin view (all jobs)", href: "/admin", icon: <InboxIcon /> },
-        { label: "Worker view (browse jobs)", href: "/contractors", icon: <BriefcaseIcon /> },
-      ]
-    : [{ label: "Browse jobs", href: "/contractors", icon: <BriefcaseIcon /> }];
-  const links = [...siteLinks, ...roleLinks];
+  const isWorker = user.role === "contractor" || isAdmin;
+  const roleLinks = isAdmin ? adminDrawerLinks : isWorker ? workerDrawerLinks : [{ label: "Chats", href: "/chats", icon: <MessageIcon /> }];
 
   useEffect(() => {
     if (!open) return;
@@ -80,45 +86,43 @@ export function AccountDrawer({
   return (
     <DrawerPortal>
       <div className={`lf-drawer-overlay${open ? " open" : ""}`} hidden={!open} onClick={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="lf-drawer" role="dialog" aria-modal="true" aria-label="Account menu">
-        <div className="lf-drawer-top">
-          <div className="lf-drawer-id">
-            <span className="lf-avatar lf-avatar--lg">{initial(user.email)}</span>
-            <div className="lf-drawer-idtext">
-              <div className="lf-drawer-email" title={user.email}>
-                {user.email}
+        <aside className="lf-drawer" role="dialog" aria-modal="true" aria-label="Account menu">
+          <div className="lf-drawer-top">
+            <div className="lf-drawer-id">
+              <span className="lf-avatar lf-avatar--lg">{initial(user.email)}</span>
+              <div className="lf-drawer-idtext">
+                <div className="lf-drawer-email" title={user.email}>
+                  {user.email}
+                </div>
+                <span className="lf-drawer-badge">{isAdmin ? "Admin" : isWorker ? "Worker" : "Homeowner"}</span>
               </div>
-              <span className="lf-drawer-badge" hidden={!isAdmin}>
-                Admin
-              </span>
             </div>
+            <button className="lf-drawer-x" type="button" aria-label="Close menu" onClick={onClose}>
+              <XIcon />
+            </button>
           </div>
-          <button className="lf-drawer-x" type="button" aria-label="Close menu" onClick={onClose}>
-            <XIcon />
-          </button>
-        </div>
 
-        <nav className="lf-drawer-nav">
-          {links.map((link) => (
-            <Link key={link.href} className={`lf-drawer-item${pathname === link.href ? " is-active" : ""}`} href={link.href}>
-              <span className="lf-di-icon">{link.icon}</span>
-              <span className="lf-di-label">{link.label}</span>
-              <span className="lf-di-chev">
-                <ChevronRightIcon />
+          <nav className="lf-drawer-nav">
+            {roleLinks.map((link) => (
+              <Link key={link.href} className={`lf-drawer-item${pathname === link.href ? " is-active" : ""}`} href={link.href}>
+                <span className="lf-di-icon">{link.icon}</span>
+                <span className="lf-di-label">{link.label}</span>
+                <span className="lf-di-chev">
+                  <ChevronRightIcon />
+                </span>
+              </Link>
+            ))}
+          </nav>
+
+          <div className="lf-drawer-foot">
+            <button className="lf-drawer-logout" type="button" onClick={onLogout}>
+              <span className="lf-di-icon">
+                <LogoutIcon />
               </span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="lf-drawer-foot">
-          <button className="lf-drawer-logout" type="button" onClick={onLogout}>
-            <span className="lf-di-icon">
-              <LogoutIcon />
-            </span>
-            <span>Log out</span>
-          </button>
-        </div>
-      </aside>
+              <span>Log out</span>
+            </button>
+          </div>
+        </aside>
       </div>
     </DrawerPortal>
   );
@@ -127,6 +131,8 @@ export function AccountDrawer({
 export function GuestAccountMenu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const next = encodeURIComponent(pathname);
+  const signupType = pathname === "/for-workers" ? "contractor" : "homeowner";
 
   useEffect(() => {
     if (!open) return;
@@ -169,27 +175,15 @@ export function GuestAccountMenu() {
               <h2>Log in to Local Fix</h2>
               <p>Post repair jobs, see replies, and manage your worker profile from one place.</p>
               <div className="lf-guest-actions">
-                <Link className="lf-guest-primary" href="/login">
+                <Link className="lf-guest-primary" href={`/login?next=${next}`}>
                   Log in
                 </Link>
-                <Link className="lf-guest-secondary" href="/signup">
+                <Link className="lf-guest-secondary" href={`/signup?type=${signupType}&next=${next}`}>
                   Create account
                 </Link>
               </div>
             </div>
 
-            <nav className="lf-drawer-nav">
-              <p className="lf-drawer-section-label">Browse</p>
-              {siteLinks.map((link) => (
-                <Link key={link.href} className={`lf-drawer-item${pathname === link.href ? " is-active" : ""}`} href={link.href}>
-                  <span className="lf-di-icon">{link.icon}</span>
-                  <span className="lf-di-label">{link.label}</span>
-                  <span className="lf-di-chev">
-                    <ChevronRightIcon />
-                  </span>
-                </Link>
-              ))}
-            </nav>
           </aside>
         </div>
       </DrawerPortal>
@@ -213,20 +207,106 @@ export function AccountMenu({ user, onLogout }: { user: AccountUser; onLogout: (
   );
 }
 
-export function AppHeader({ user, onLogout }: { user: AccountUser; onLogout: () => void | Promise<void> }) {
+export function AppHeader({
+  user,
+  onLogout,
+  active = "",
+}: {
+  user: AccountUser;
+  onLogout: () => void | Promise<void>;
+  active?: MainNavKey;
+}) {
   return (
-    <header className="lf-appbar">
-      <div className="lf-appbar-inner">
+    <header className="site-header">
+      <nav className="nav" aria-label="Main navigation">
         <Link className="brand" href="/" aria-label="Local Fix home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="brand-logo" src={assetPath("/logos/Localfix-HorzontalLogoNewBLACK.png")} alt="Local Fix" />
         </Link>
-        <span className="lf-tag" hidden={user.role !== "admin"}>
-          Admin
-        </span>
-        <span className="lf-appbar-spacer" />
-        <AccountMenu user={user} onLogout={onLogout} />
-      </div>
+
+        <div className="nav-links">
+          <Link href="/" className={mainNavClass(active, "home")}>
+            Home
+          </Link>
+          <Link href="/post-job" className={mainNavClass(active, "post-job")}>
+            Post My Problem
+          </Link>
+          <Link href="/for-workers" className={mainNavClass(active, "for-workers")}>
+            For Workers
+          </Link>
+          <Link href="/contact" className={mainNavClass(active, "contact")}>
+            Contact
+          </Link>
+        </div>
+
+        <div className="nav-cta">
+          <span className="nav-auth">
+            <AccountMenu user={user} onLogout={onLogout} />
+          </span>
+        </div>
+      </nav>
+    </header>
+  );
+}
+
+export function RoleAppHeader({
+  user,
+  activeHref,
+  onLogout,
+}: {
+  user: AccountUser;
+  activeHref: string;
+  onLogout: () => void | Promise<void>;
+}) {
+  return (
+    <AppHeader
+      user={user}
+      onLogout={onLogout}
+      active={mainActiveForApp(activeHref)}
+    />
+  );
+}
+
+export function AppHeaderFallback({
+  activeHref,
+}: {
+  activeHref: string;
+}) {
+  const pathname = usePathname();
+  const loginHref = `/login?next=${encodeURIComponent(pathname)}`;
+
+  return (
+    <header className="site-header">
+      <nav className="nav" aria-label="Main navigation">
+        <Link className="brand" href="/" aria-label="Local Fix home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-logo" src={assetPath("/logos/Localfix-HorzontalLogoNewBLACK.png")} alt="Local Fix" />
+        </Link>
+
+        <div className="nav-links">
+          <Link href="/" className={mainNavClass(mainActiveForApp(activeHref), "home")}>
+            Home
+          </Link>
+          <Link href="/post-job" className={mainNavClass(mainActiveForApp(activeHref), "post-job")}>
+            Post My Problem
+          </Link>
+          <Link href="/for-workers" className={mainNavClass(mainActiveForApp(activeHref), "for-workers")}>
+            For Workers
+          </Link>
+          <Link href="/contact" className={mainNavClass(mainActiveForApp(activeHref), "contact")}>
+            Contact
+          </Link>
+        </div>
+
+        <div className="nav-cta">
+          <span className="nav-auth">
+            <Link className="nav-btn nav-login" href={loginHref}>
+              Log in
+            </Link>
+            <GuestAccountMenu />
+          </span>
+        </div>
+      </nav>
     </header>
   );
 }

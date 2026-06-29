@@ -3,38 +3,56 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyboardEvent, useEffect, useState } from "react";
+import { useAuth } from "./AuthProvider";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
 import { assetPath } from "@/lib/paths";
 
 export function LoginForm() {
   const router = useRouter();
+  const { ready: authReady, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nextPath, setNextPath] = useState("");
+  const [nextReady, setNextReady] = useState(false);
   const [message, setMessage] = useState<{ text: string; kind?: "ok" | "err" }>({ text: "" });
   const [busy, setBusy] = useState(false);
 
-  async function routeByRole(userId: string) {
-    let dest = "/contractors";
+  function readSafeNext() {
+    const raw = new URLSearchParams(window.location.search).get("next") || "";
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
+  }
+
+  function routeAfterLogin(overrideNext = nextPath) {
+    router.push(overrideNext || "/");
+  }
+
+  async function withTimeout<T>(promise: Promise<T>, message: string, ms = 15000): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    });
     try {
-      const prof = await getSupabase().from("profiles").select("role").eq("id", userId).maybeSingle();
-      if (prof.data?.role === "admin") dest = "/admin";
-    } catch {
-      dest = "/contractors";
+      return await Promise.race([promise, timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-    router.push(dest);
   }
 
   useEffect(() => {
+    const next = readSafeNext();
+    setNextPath(next);
+    setNextReady(true);
     if (!supabaseConfigured) {
       setMessage({ text: "Sign-in is not configured yet (missing Supabase keys).", kind: "err" });
-      return;
     }
-    getSupabase().auth.getSession().then((result) => {
-      const session = result.data.session;
-      if (session) routeByRole(session.user.id);
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!supabaseConfigured || !nextReady || !authReady || !user) return;
+    routeAfterLogin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, nextReady, user]);
 
   async function login() {
     if (!email.trim() || !password) {
@@ -43,14 +61,22 @@ export function LoginForm() {
     }
     setBusy(true);
     setMessage({ text: "Signing in..." });
-    const res = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (res.error) {
-      setMessage({ text: res.error.message, kind: "err" });
-      return;
+    try {
+      const res = await withTimeout(
+        getSupabase().auth.signInWithPassword({ email: email.trim(), password }),
+        "Sign-in is taking too long. Check your Supabase Auth settings and try again.",
+      );
+      if (res.error) {
+        setMessage({ text: res.error.message, kind: "err" });
+        return;
+      }
+      setMessage({ text: "Welcome back - taking you in...", kind: "ok" });
+      if (res.data.session) routeAfterLogin();
+    } catch (err) {
+      setMessage({ text: err instanceof Error ? err.message : "Could not sign in. Please try again.", kind: "err" });
+    } finally {
+      setBusy(false);
     }
-    setMessage({ text: "Welcome back - taking you in...", kind: "ok" });
-    if (res.data.session) await routeByRole(res.data.session.user.id);
   }
 
   function onPasswordKey(event: KeyboardEvent<HTMLInputElement>) {
@@ -65,7 +91,7 @@ export function LoginForm() {
           <img src={assetPath("/favicon.png")} alt="" />
         </div>
         <h1>Welcome back</h1>
-        <p className="sub">Log in to your worker or admin account.</p>
+        <p className="sub">Log in to post a repair, check messages, or manage worker leads.</p>
 
         <div className="auth-field">
           <label htmlFor="email">Email</label>
@@ -83,10 +109,10 @@ export function LoginForm() {
         </p>
 
         <p className="auth-hint">
-          Homeowners do not need an account - just <Link href="/post-job">post your problem</Link>.
+          Posting a repair now requires an account so replies and chats stay connected.
         </p>
         <div className="auth-switch">
-          New to Local Fix? <Link href="/signup">Create a worker account</Link>
+          New to Local Fix? <Link href={`/signup${nextPath ? `?type=homeowner&next=${encodeURIComponent(nextPath)}` : ""}`}>Create an account</Link>
         </div>
       </div>
     </main>

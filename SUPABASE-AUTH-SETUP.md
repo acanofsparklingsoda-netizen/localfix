@@ -1,11 +1,12 @@
-# Local Fix — Auth setup (contractors + admin)
+# Local Fix — Auth setup (homeowners + contractors + admin)
 
-This adds **logins** for contractors and admins. Homeowners are untouched — they still
-post with no account.
+This adds **logins** for homeowners, contractors, and admins. Homeowners now create an
+account before posting a repair so their jobs, replies, and future chats can stay linked.
 
-- **Contractors** sign up / log in at **`contractors.html`** and browse jobs **without**
+- **Homeowners** sign up from **Post My Problem** and then upload their repair request.
+- **Contractors** sign up / log in and browse jobs **without**
   homeowner contact info (name/phone/email are never sent to them).
-- **Admins** log in at **`admin.html`** to see everything + change each job's status.
+- **Admins** log in to see everything + change each job's status.
 
 Both pages use the **anon key** (already in `supabase-config.js`) + Supabase Auth — no
 master key anymore, so `admin.html` is now safe to deploy. (The old master-key version is
@@ -15,8 +16,8 @@ kept as `admin-servicekey.html`, git-ignored, as a fallback.)
 
 ### 1. Run the SQL
 In Supabase → **SQL Editor → New query**, paste all of **`supabase-auth-setup.sql`** and
-**Run**. This creates the `profiles` (roles) table, the signup trigger, the security rules,
-and the safe `list_jobs_for_contractor()` function.
+**Run**. This creates the `profiles` roles table, the signup trigger, homeowner posting
+rules, media upload rules, and the safe `list_jobs_for_contractor()` function.
 
 ### 2. (For testing) turn off email confirmation
 **Authentication → Providers → Email →** uncheck **"Confirm email" → Save.** This lets you
@@ -24,17 +25,17 @@ sign up and log in instantly while testing. For launch, turn it back on so peopl
 their email (the pages already handle the "check your email" case).
 
 ### 3. Make yourself the admin
-1. Create your account: open **`contractors.html`**, switch to **Sign up**, register with
-   your email + password. (Or **Authentication → Users → Add user**.)
+1. Create your account from the site sign-up page with your email + password. (Or
+   **Authentication → Users → Add user**.)
 2. Promote it — in **SQL Editor**, run with your email:
    ```sql
    update public.profiles set role = 'admin' where email = 'you@example.com';
    ```
-3. Log in at **`admin.html`** with that email + password → you should see all submissions,
+3. Log in at **`/admin`** with that email + password → you should see all submissions,
    each with a **Status** dropdown you can change.
 
 ### 4. Test a contractor
-Open `contractors.html` in a different browser (or incognito), sign up with a *different*
+Open the worker sign-up in a different browser (or incognito), sign up with a *different*
 email, and you should see the posted jobs — **with no name/phone/email** on them.
 
 ## Notes
@@ -52,8 +53,8 @@ email, and you should see the posted jobs — **with no name/phone/email** on th
   `list_jobs_for_contractor()`, which selects only the safe columns (category, description,
   zip, urgency, media, status) and checks the caller's role. The contact columns are never
   selected, so they can't leak — even via the API.
-- **Roles:** everyone who signs up is a `contractor` by default; `admin` is only ever set by
-  the SQL above. Nobody can make themselves an admin.
+- **Roles:** people can sign up as `homeowner` or `contractor`; `admin` is only ever set by
+  the SQL above. Nobody can make themselves an admin from the public site.
 
 ## What's next (Phase 2)
 An **"I'm interested" button** on each contractor job → notifies you → you connect that

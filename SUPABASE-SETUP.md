@@ -18,7 +18,8 @@ URLs). It runs entirely from the browser via `supabase-js`, so **no PHP host is 
 1. In the project, open **SQL Editor** (left sidebar) → **New query**.
 2. Open `supabase-setup.sql` from this repo, copy **all** of it, paste it in, click **Run**.
    You should see "Success. No rows returned." This creates the `job_submissions` table,
-   the `job-media` Storage bucket, and the security policies.
+   the `job-media` Storage bucket, and the security policies for anonymous legacy posts
+   plus signed-in homeowner posts.
 
 ### 3. Copy your two keys into the site
 1. Go to **Settings → API**.
@@ -30,14 +31,15 @@ URLs). It runs entirely from the browser via `supabase-js`, so **no PHP host is 
    ```
    (Or just send me both and I'll drop them in.)
 
-That's it. Submit a test from `post-job.html` and watch the row appear in
+That's it. Submit a test from the **Post My Problem** page and watch the row appear in
 **Table editor → job_submissions**, with the uploaded files in **Storage → job-media**.
 
 ## Good to know
 - **The anon key is public on purpose.** Unlike the Google service-account key, it's
   designed to live in client-side code. Security comes from the Row Level Security
-  policies in the SQL (public can *insert* a submission and *upload* a file, but cannot
-  *read* anyone's submissions). So `supabase-config.js` is safe to commit.
+  policies in the SQL (the public form can *insert* a submission and *upload* a file,
+  signed-in users can do the same with their account attached, but visitors cannot
+  *read* anyone's submissions). So the anon key is safe to commit.
 - **Where leads live now:** in the Supabase dashboard (Table editor), not a Google Sheet.
   The old `submit-job.php` + `credentials.json` (Google Sheets) are still in the repo but
   are no longer used by the form. Say the word if you want both.

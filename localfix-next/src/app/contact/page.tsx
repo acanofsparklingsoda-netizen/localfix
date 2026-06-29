@@ -17,7 +17,7 @@ export default function ContactPage() {
           <p>Questions about a job, a worker account, or the service? Send us a note and we will get back to you.</p>
         </div>
 
-        <section className="section" style={{ paddingTop: 36 }}>
+        <section className="section section-compact-top">
           <div className="wrap">
             <div className="contact-grid">
               <div className="contact-info">

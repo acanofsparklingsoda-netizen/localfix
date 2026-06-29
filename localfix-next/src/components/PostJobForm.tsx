@@ -2,7 +2,10 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { getAnonSupabase, supabaseConfigured } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { useAuth } from "./AuthProvider";
+import { CameraIcon } from "./Icons";
+import { getAnonSupabase, getSupabase, supabaseConfigured } from "@/lib/supabase";
 
 const BUCKET = "job-media";
 const TABLE = "job_submissions";
@@ -21,12 +24,14 @@ function value(form: HTMLFormElement, name: string) {
 }
 
 export function PostJobForm() {
+  const { ready: authReady, user } = useAuth();
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [status, setStatus] = useState<{ message: string; ok: boolean } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [description, setDescription] = useState("");
   const [hasCarryover, setHasCarryover] = useState(false);
+  const [returnPath, setReturnPath] = useState("/post-job");
   const started = useRef(Date.now());
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -36,6 +41,7 @@ export function PostJobForm() {
       setDescription(desc);
       setHasCarryover(true);
     }
+    setReturnPath(`${window.location.pathname}${window.location.search || ""}`);
   }, []);
 
   useEffect(() => {
@@ -47,25 +53,32 @@ export function PostJobForm() {
     return () => document.removeEventListener("keydown", onKey);
   }, [modalOpen]);
 
-  async function uploadMedia() {
+  async function uploadMedia(client: SupabaseClient) {
     const urls: string[] = [];
     const files = Array.from(fileInput.current?.files || []);
     if (!files.length) return urls;
 
-    const sb = getAnonSupabase();
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const key = storageKey(file, i);
-      const { error } = await sb.storage.from(BUCKET).upload(key, file, {
+      const { error } = await client.storage.from(BUCKET).upload(key, file, {
         cacheControl: "3600",
         contentType: file.type || undefined,
         upsert: false,
       });
       if (error) throw error;
-      const { data } = sb.storage.from(BUCKET).getPublicUrl(key);
+      const { data } = client.storage.from(BUCKET).getPublicUrl(key);
       urls.push(data.publicUrl);
     }
     return urls;
+  }
+
+  async function uploadMediaForSignedInUser() {
+    try {
+      return await uploadMedia(getSupabase());
+    } catch {
+      return uploadMedia(getAnonSupabase());
+    }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -87,11 +100,15 @@ export function PostJobForm() {
       setStatus({ message: "Submissions are not configured yet (missing Supabase keys). See SUPABASE-SETUP.md.", ok: false });
       return;
     }
+    if (!user) {
+      setStatus({ message: "Please sign in before posting your repair request.", ok: false });
+      return;
+    }
 
     setSubmitting(true);
     setStatus(null);
     try {
-      const media = await uploadMedia();
+      const media = await uploadMediaForSignedInUser();
       const urgency = new FormData(form).get("urgency");
       const row = {
         category: value(form, "category") || null,
@@ -105,8 +122,13 @@ export function PostJobForm() {
         media,
         referer: document.referrer || window.location.href,
       };
-      const { error } = await getAnonSupabase().from(TABLE).insert(row);
-      if (error) throw error;
+      const { error } = await getSupabase()
+        .from(TABLE)
+        .insert({ ...row, owner_id: user.id });
+      if (error) {
+        const fallback = await getAnonSupabase().from(TABLE).insert(row);
+        if (fallback.error) throw fallback.error;
+      }
       setModalOpen(true);
       form.reset();
       setDescription("");
@@ -118,6 +140,61 @@ export function PostJobForm() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (supabaseConfigured && !authReady) {
+    return (
+      <div className="post-auth-card">
+        <div className="post-auth-icon" aria-hidden="true">
+          ✓
+        </div>
+        <h2>Checking your account...</h2>
+        <p>One moment while we get the upload form ready.</p>
+      </div>
+    );
+  }
+
+  if (!supabaseConfigured) {
+    return (
+      <div className="post-auth-card">
+        <div className="post-auth-icon" aria-hidden="true">
+          !
+        </div>
+        <h2>Sign-in is not configured yet</h2>
+        <p>Supabase keys are missing, so account-based posting cannot run in this preview.</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    const next = encodeURIComponent(returnPath);
+    return (
+      <div className="post-auth-card post-auth-card--gate">
+        <div className="post-auth-main-copy">
+          <p className="post-auth-kicker">Account required</p>
+          <h2>Create an account to post your repair</h2>
+          <p>Workers need a way to reply. Your repair request, replies, and chats will stay saved in one place.</p>
+        </div>
+
+        <div className="post-auth-actions post-auth-actions--focused">
+          <Link className="btn btn-primary btn-lg post-auth-primary" href={`/signup?type=homeowner&next=${next}`}>
+            Create account and continue
+          </Link>
+          <p className="post-auth-login-note">
+            Already have an account? <Link href={`/login?next=${next}`}>Log in</Link>
+          </p>
+        </div>
+
+        <div className="post-auth-next">
+          <p>After you continue</p>
+          <div className="post-auth-steps" aria-label="What happens next">
+            <span data-step="1">Upload the problem</span>
+            <span data-step="2">Workers review it</span>
+            <span data-step="3">Get replies</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -141,7 +218,7 @@ export function PostJobForm() {
           <span className="step-label">
             <b>1</b> What do you need help with?
           </span>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field field-tight">
             <label htmlFor="category">Job category</label>
             <select id="category" name="category" required defaultValue="">
               <option value="" disabled>
@@ -163,8 +240,8 @@ export function PostJobForm() {
             <b>2</b> Show us the problem
           </span>
           <label className="upload-drop" htmlFor="media">
-            <span style={{ fontSize: "1.5rem" }} aria-hidden="true">
-              📷
+            <span className="upload-drop-icon" aria-hidden="true">
+              <CameraIcon />
             </span>
             Upload a photo or video
             <small>This helps workers understand the job before they respond.</small>
@@ -188,7 +265,7 @@ export function PostJobForm() {
           <span className="step-label">
             <b>3</b> Tell us what is happening
           </span>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field field-tight">
             <label htmlFor="description">Describe your issue</label>
             <textarea
               id="description"
@@ -206,7 +283,7 @@ export function PostJobForm() {
           <span className="step-label">
             <b>4</b> Where is the job located?
           </span>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field field-tight">
             <label htmlFor="location">ZIP code</label>
             <input id="location" name="location" type="text" inputMode="numeric" maxLength={5} pattern="[0-9]{5}" title="Enter a 5-digit ZIP code" placeholder="e.g. 78701" required />
           </div>
@@ -251,7 +328,7 @@ export function PostJobForm() {
             </div>
             <div className="field">
               <label htmlFor="email">Email address</label>
-              <input id="email" name="email" type="email" placeholder="you@email.com" required />
+              <input id="email" name="email" type="email" placeholder="you@email.com" defaultValue={user.email} required />
             </div>
           </div>
         </div>

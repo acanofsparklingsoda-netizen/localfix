@@ -18,7 +18,7 @@ export default function ForWorkersPage() {
           <p>Get notified when homeowners near you post plumbing, handyman, or repair jobs. Review the details and decide which jobs are worth responding to.</p>
         </div>
 
-        <section className="section" style={{ paddingTop: 40 }}>
+        <section className="section section-compact-top">
           <div className="wrap">
             <div className="worker-perks">
               <article className="worker-perk">
@@ -53,24 +53,24 @@ export default function ForWorkersPage() {
           </div>
         </section>
 
-        <section className="section section-mist" id="worker-form">
+        <section className="section section-mist worker-join-section" id="worker-form">
           <div className="narrow">
             <div className="section-head">
               <p className="eyebrow">Join as a Worker</p>
               <h2>Sign up to start picking up jobs</h2>
             </div>
 
-            <div className="form-card" style={{ textAlign: "center", padding: "44px 32px" }}>
-              <h3 style={{ fontSize: "1.5rem", margin: "0 0 10px" }}>Create your free worker account</h3>
-              <p style={{ color: "var(--muted)", maxWidth: 460, margin: "0 auto 26px" }}>
+            <div className="form-card worker-join-card">
+              <h3>Create your free worker account</h3>
+              <p>
                 Browse repair jobs homeowners post near you, see the photos and details before you go, and get connected - there is no fee to sign up.
               </p>
-              <Link className="btn btn-primary btn-lg" href="/signup" style={{ minWidth: 230 }}>
+              <Link className="btn btn-primary btn-lg" href="/signup?type=contractor&next=/contractors">
                 Sign up as a worker
               </Link>
-              <p style={{ margin: "20px 0 0", color: "var(--muted)" }}>
+              <p className="worker-join-login">
                 Already have an account?{" "}
-                <Link href="/login" style={{ color: "var(--green-dark)", fontWeight: 700 }}>
+                <Link href="/login?next=/contractors">
                   Log in
                 </Link>
               </p>

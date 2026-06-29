@@ -1,24 +1,26 @@
--- Local Fix — Auth & roles setup (contractors + admin)
+-- Local Fix — Auth & roles setup (homeowners + contractors + admin)
 -- Paste this whole file into the Supabase SQL Editor and click "Run".
 --
 -- What it sets up:
---   • a profiles table giving every signed-up user a role (contractor | admin)
---   • a trigger that auto-creates that profile on signup (default role = contractor)
+--   • a profiles table giving every signed-up user a role (homeowner | contractor | admin)
+--   • a trigger that auto-creates that profile on signup (default role = homeowner)
 --   • role helper functions used by the security rules
 --   • rules so ADMINS can read all submissions + change a job's status
 --   • a safe function contractors call to browse jobs WITHOUT homeowner contact info
 --
--- Homeowners are NOT part of this — they post with no account, exactly as before.
-
 -- Safety: make sure the status column exists (no-op if you already ran the migration).
 alter table public.job_submissions
   add column if not exists status text not null default 'Submitted';
+
+-- Link future job posts to the signed-in homeowner account. Existing rows stay valid.
+alter table public.job_submissions
+  add column if not exists owner_id uuid references auth.users(id) on delete set null;
 
 -- ───────────────────────────── profiles + roles ─────────────────────────────
 create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text,
-  role       text not null default 'contractor',   -- 'contractor' | 'admin'
+  role       text not null default 'homeowner',    -- 'homeowner' | 'contractor' | 'admin'
   approved   boolean not null default true,         -- set DEFAULT to false to require admin approval
   created_at timestamptz not null default now()
 );
@@ -31,9 +33,15 @@ returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  selected_role text := coalesce(new.raw_user_meta_data->>'role', new.raw_user_meta_data->>'account_type', 'homeowner');
 begin
+  if selected_role not in ('homeowner', 'contractor') then
+    selected_role := 'homeowner';
+  end if;
+
   insert into public.profiles (id, email, role)
-  values (new.id, new.email, 'contractor')
+  values (new.id, new.email, selected_role)
   on conflict (id) do nothing;
   return new;
 end;
@@ -71,8 +79,14 @@ drop policy if exists "admins update profiles" on public.profiles;
 create policy "admins update profiles" on public.profiles
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- ──────────── job_submissions: admins can read everything + set status ───────
--- (the public/anon INSERT policy from supabase-setup.sql stays exactly as-is)
+-- ──────────── job_submissions: signed-in homeowners can post; admins can manage ───────
+drop policy if exists "authenticated users can submit jobs" on public.job_submissions;
+create policy "authenticated users can submit jobs"
+  on public.job_submissions
+  for insert
+  to authenticated
+  with check (owner_id = auth.uid() or owner_id is null);
+
 drop policy if exists "admins read submissions" on public.job_submissions;
 create policy "admins read submissions" on public.job_submissions
   for select to authenticated using (public.is_admin());
@@ -100,8 +114,17 @@ $$;
 grant execute on function public.list_jobs_for_contractor() to authenticated;
 revoke execute on function public.list_jobs_for_contractor() from anon;
 
+-- Let signed-in users upload job media too. The old anon upload policy may stay
+-- in place for backwards compatibility with older form builds.
+drop policy if exists "authenticated users can upload job media" on storage.objects;
+create policy "authenticated users can upload job media"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'job-media');
+
 -- ════════════════════════════════════════════════════════════════════════════
--- AFTER running this, make yourself the admin. Sign up once (on contractors.html
+-- AFTER running this, make yourself the admin. Sign up once (on the site
 -- or in Authentication → Users), then run, with YOUR email:
 --
 --   update public.profiles set role = 'admin' where email = 'you@example.com';

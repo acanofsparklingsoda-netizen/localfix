@@ -120,6 +120,36 @@ export function InboxIcon({ className }: IconProps) {
   );
 }
 
+export function MessageIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.5 5.5h15v10.2a2.3 2.3 0 0 1-2.3 2.3H9l-4.5 3v-3.2a2.3 2.3 0 0 1-2-2.3V7.8a2.3 2.3 0 0 1 2.3-2.3Z" />
+      <path d="M8 10h8" />
+      <path d="M8 13.5h5.5" />
+    </svg>
+  );
+}
+
+export function ChartIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 19.5h16" />
+      <path d="M7 16V9" />
+      <path d="M12 16V5.5" />
+      <path d="M17 16v-4" />
+    </svg>
+  );
+}
+
+export function DollarIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v18" />
+      <path d="M17 7.2c-1.1-1-2.8-1.6-4.5-1.6-2.5 0-4.2 1.2-4.2 3s1.5 2.5 4.2 3.1c2.8.6 4.4 1.3 4.4 3.3s-1.8 3.4-4.6 3.4c-2 0-3.8-.7-5.1-1.9" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -132,6 +162,24 @@ export function ChevronRightIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+export function ArrowLeftIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </svg>
+  );
+}
+
+export function SendIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m21 3-9.6 18-1.8-7.6L3 10.6 21 3Z" />
+      <path d="M9.7 13.2 21 3" />
     </svg>
   );
 }

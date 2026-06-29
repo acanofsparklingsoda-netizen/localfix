@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppHeader, AccountUser } from "./AccountChrome";
+import { AppHeaderFallback, RoleAppHeader } from "./AccountChrome";
+import { useAuth } from "./AuthProvider";
 import { BodyClass } from "./BodyClass";
 import { CalendarIcon, InboxIcon, WrenchIcon } from "./Icons";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
@@ -202,7 +203,8 @@ function SubmissionCard({ row, onStatusChange }: { row: JobSubmission; onStatusC
 
 export function AdminDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<AccountUser | null>(null);
+  const { ready: authReady, profileReady, user } = useAuth();
+  const loadedFor = useRef("");
   const [rows, setRows] = useState<JobSubmission[]>([]);
   const [status, setStatus] = useState<{ text: string; err?: boolean }>({ text: "Loading..." });
   const [loading, setLoading] = useState(true);
@@ -225,33 +227,30 @@ export function AdminDashboard() {
     setLoading(false);
   }
 
-  async function afterAuth(sessionUser: { id: string; email?: string }) {
-    const prof = await getSupabase().from("profiles").select("role").eq("id", sessionUser.id).maybeSingle();
-    if (prof.error) {
-      setStatus({ text: `Could not check your role: ${prof.error.message}`, err: true });
-      setLoading(false);
-      return;
-    }
-    if (!prof.data || prof.data.role !== "admin") {
-      router.push("/contractors");
-      return;
-    }
-    setUser({ email: sessionUser.email || "", role: "admin" });
-    loadJobs();
-  }
-
   useEffect(() => {
     if (!supabaseConfigured) {
       setStatus({ text: "Supabase is not configured (missing keys).", err: true });
       setLoading(false);
       return;
     }
-    getSupabase().auth.getSession().then((result) => {
-      if (result.data.session) afterAuth(result.data.session.user);
-      else router.push("/login");
-    });
+    if (!authReady || !profileReady) {
+      setStatus({ text: "Loading..." });
+      setLoading(true);
+      return;
+    }
+    if (!user) {
+      router.push("/login?next=/admin");
+      return;
+    }
+    if (user.role !== "admin") {
+      router.push(user.role === "contractor" ? "/contractors" : "/post-job");
+      return;
+    }
+    if (loadedFor.current === user.id) return;
+    loadedFor.current = user.id;
+    loadJobs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [authReady, profileReady, router, user?.id, user?.role]);
 
   async function onStatusChange(id: string | number, next: string) {
     const res = await getSupabase().from(TABLE).update({ status: next }).eq("id", id);
@@ -269,7 +268,7 @@ export function AdminDashboard() {
   return (
     <>
       <BodyClass className="lf-app" />
-      {user ? <AppHeader user={user} onLogout={logout} /> : null}
+      {user?.role === "admin" ? <RoleAppHeader user={user} activeHref="/admin" onLogout={logout} /> : <AppHeaderFallback activeHref="/admin" />}
       <main className="lf-main">
         <div className="lf-head">
           <div>

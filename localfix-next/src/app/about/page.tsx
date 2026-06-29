@@ -16,7 +16,7 @@ export default function AboutPage() {
           <h1>Why we built this</h1>
         </div>
 
-        <section className="section" style={{ paddingTop: 36 }}>
+        <section className="section section-compact-top">
           <div className="prose">
             <p>
               Finding help for small home repair jobs can be frustrating. Homeowners often call multiple people, send photos one by one, and wait for replies. This website makes the process simpler by letting homeowners post the issue once so local workers can review the details and respond if they are available.
@@ -35,11 +35,11 @@ export default function AboutPage() {
             <h2>Our goal</h2>
             <p>Keep it human and simple. Post the problem once, let the right local people see it, and make small repairs less of a headache.</p>
 
-            <p style={{ marginTop: 28 }}>
+            <p className="prose-actions">
               <Link className="btn btn-primary btn-lg" href="/post-job">
                 Post My Problem
               </Link>
-              <Link className="btn btn-ghost btn-lg" href="/contact" style={{ marginLeft: 8 }}>
+              <Link className="btn btn-ghost btn-lg" href="/contact">
                 Contact Us
               </Link>
             </p>

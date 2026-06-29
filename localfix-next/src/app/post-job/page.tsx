@@ -16,8 +16,8 @@ export default function PostJobPage() {
           <p>Tell us what needs fixing. It is free, there is no obligation, and local workers will review the details.</p>
         </div>
 
-        <section className="section" style={{ paddingTop: 32 }}>
-          <div className="narrow">
+        <section className="section section-compact-top post-job-section">
+          <div className="post-flow-wrap">
             <PostJobForm />
           </div>
         </section>

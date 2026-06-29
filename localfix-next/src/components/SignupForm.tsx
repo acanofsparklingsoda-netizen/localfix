@@ -3,25 +3,44 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyboardEvent, useEffect, useState } from "react";
+import { useAuth } from "./AuthProvider";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
 import { assetPath } from "@/lib/paths";
 
 export function SignupForm() {
   const router = useRouter();
+  const { ready: authReady, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [accountType, setAccountType] = useState<"homeowner" | "contractor">("homeowner");
+  const [nextPath, setNextPath] = useState("");
+  const [nextReady, setNextReady] = useState(false);
   const [message, setMessage] = useState<{ text: string; kind?: "ok" | "err" }>({ text: "" });
   const [busy, setBusy] = useState(false);
 
+  function readSafeNext() {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("next") || "";
+    const type = params.get("type");
+    if (type === "contractor" || type === "worker") setAccountType("contractor");
+    if (type === "homeowner") setAccountType("homeowner");
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
+  }
+
   useEffect(() => {
+    const next = readSafeNext();
+    setNextPath(next);
+    setNextReady(true);
     if (!supabaseConfigured) {
       setMessage({ text: "Sign-up is not configured yet (missing Supabase keys).", kind: "err" });
-      return;
     }
-    getSupabase().auth.getSession().then((result) => {
-      if (result.data.session) router.push("/contractors");
-    });
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseConfigured || !nextReady || !authReady || !user) return;
+    router.push(nextPath || "/post-job");
+  }, [authReady, nextPath, nextReady, router, user]);
 
   async function signup() {
     if (!email.trim() || !password) {
@@ -34,15 +53,19 @@ export function SignupForm() {
     }
     setBusy(true);
     setMessage({ text: "Creating your account..." });
-    const res = await getSupabase().auth.signUp({ email: email.trim(), password });
+    const res = await getSupabase().auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { role: accountType, account_type: accountType } },
+    });
     setBusy(false);
     if (res.error) {
       setMessage({ text: res.error.message, kind: "err" });
       return;
     }
     if (res.data.session) {
-      setMessage({ text: "You are in - taking you to the jobs board...", kind: "ok" });
-      router.push("/contractors");
+      setMessage({ text: "You are in - taking you to the next step...", kind: "ok" });
+      router.push(nextPath || (accountType === "contractor" ? "/contractors" : "/post-job"));
     } else {
       setMessage({ text: "Account created! Check your email to confirm, then log in.", kind: "ok" });
     }
@@ -60,7 +83,16 @@ export function SignupForm() {
           <img src={assetPath("/favicon.png")} alt="" />
         </div>
         <h1>Create your account</h1>
-        <p className="sub">For local workers who want to pick up jobs.</p>
+        <p className="sub">Choose the account that fits what you need today.</p>
+
+        <div className="auth-choice" aria-label="Account type">
+          <button className={accountType === "homeowner" ? "is-active" : undefined} type="button" onClick={() => setAccountType("homeowner")}>
+            I need a repair
+          </button>
+          <button className={accountType === "contractor" ? "is-active" : undefined} type="button" onClick={() => setAccountType("contractor")}>
+            I am a worker
+          </button>
+        </div>
 
         <div className="auth-field">
           <label htmlFor="email">Email</label>
@@ -78,7 +110,7 @@ export function SignupForm() {
         </p>
 
         <p className="auth-hint">
-          Just need a repair done? You do not need an account - <Link href="/post-job">post your problem</Link>.
+          {accountType === "homeowner" ? "After signup, you can upload your repair problem." : "Worker accounts can browse jobs after approval if approvals are enabled."}
         </p>
         <div className="auth-switch">
           Already have an account? <Link href="/login">Log in</Link>

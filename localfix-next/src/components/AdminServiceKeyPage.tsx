@@ -214,30 +214,40 @@ export function AdminServiceKeyPage() {
         .sk-page {
           margin: 0;
           color: var(--ink);
-          background: var(--paper);
+          background:
+            linear-gradient(180deg, #f8faf6 0%, #eef5ef 46%, #fbfaf7 100%);
           min-height: 100vh;
         }
         .sk-wrap {
-          width: min(960px, calc(100% - 32px));
+          width: min(1120px, calc(100% - 32px));
           margin: 0 auto;
         }
         .sk-bar {
           position: sticky;
-          top: 0;
+          top: 76px;
           z-index: 5;
-          background: rgba(251, 250, 247, 0.92);
-          backdrop-filter: blur(6px);
+          background: rgba(248, 250, 246, 0.92);
+          backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--line);
+          box-shadow: 0 8px 22px rgba(28, 39, 33, 0.05);
+        }
+        @media (max-width: 860px) {
+          .sk-bar {
+            top: 116px;
+          }
         }
         .sk-bar-inner {
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 14px 0;
+          min-height: 64px;
+          padding: 10px 0;
         }
         .sk-bar h1 {
-          font-size: 1.1rem;
+          color: #18231d;
+          font-size: 1.18rem;
           margin: 0;
+          line-height: 1.15;
         }
         .sk-count {
           color: var(--muted);
@@ -250,55 +260,80 @@ export function AdminServiceKeyPage() {
           border: 1px solid var(--line);
           background: #fff;
           color: var(--ink);
-          padding: 8px 14px;
-          border-radius: 9px;
-          font-weight: 600;
+          min-height: 40px;
+          padding: 0 16px;
+          border-radius: 8px;
+          font-weight: 800;
           cursor: pointer;
+          box-shadow: 0 4px 14px rgba(28, 39, 33, 0.04);
         }
         .sk-btn:hover {
           border-color: var(--green);
         }
         .sk-btn-primary {
-          background: var(--green);
+          background: linear-gradient(180deg, #69b977 0%, #4f9d60 100%);
           border-color: var(--green);
           color: #fff;
         }
         .sk-warn {
-          background: #fcf3e6;
-          border: 1px solid var(--gold);
-          color: #7a5a17;
-          padding: 12px 16px;
-          border-radius: 10px;
+          background: #eef7f0;
+          border: 1px solid #cfe2d5;
+          color: var(--green-dark);
+          padding: 14px 16px;
+          border-radius: 8px;
           margin: 18px 0;
-          font-size: 0.9rem;
+          font-size: 0.92rem;
+        }
+        .sk-warn-tight {
+          margin: 0 0 4px;
         }
         .sk-gate {
-          max-width: 520px;
-          margin: 60px auto;
+          max-width: 560px;
+          margin: 78px auto;
           text-align: center;
         }
         .sk-card-box {
+          position: relative;
+          overflow: hidden;
           background: #fff;
-          border: 1px solid var(--line);
-          border-radius: 16px;
-          padding: 32px;
-          box-shadow: var(--shadow-sm);
+          border: 1px solid #d2ded7;
+          border-radius: 8px;
+          padding: 36px;
+          box-shadow: 0 22px 52px rgba(28, 39, 33, 0.13);
           text-align: left;
+        }
+        .sk-card-box::before {
+          content: "";
+          position: absolute;
+          inset: 0 0 auto;
+          height: 5px;
+          background: linear-gradient(90deg, var(--green) 0%, var(--green-dark) 100%);
         }
         .sk-card-box h2 {
           margin-top: 0;
+          color: #18231d;
+          font-size: 1.6rem;
+          line-height: 1.1;
+        }
+        .sk-muted-copy {
+          color: var(--muted);
+          margin-top: 0;
+          line-height: 1.55;
         }
         .sk-card-box label {
           display: block;
-          font-weight: 600;
+          color: #24332b;
+          font-weight: 750;
           margin: 16px 0 6px;
         }
         .sk-card-box input[type="password"] {
           width: 100%;
-          padding: 11px 13px;
-          border: 1px solid var(--line);
-          border-radius: 9px;
+          min-height: 50px;
+          padding: 12px 14px;
+          border: 1px solid #cfdcd5;
+          border-radius: 8px;
           font: inherit;
+          background: #fbfcfa;
         }
         .sk-row {
           display: flex;
@@ -308,9 +343,17 @@ export function AdminServiceKeyPage() {
           font-size: 0.9rem;
           color: var(--muted);
         }
+        .sk-check-label {
+          margin: 0;
+          color: var(--muted);
+          font-weight: 500;
+        }
         .sk-status {
           color: var(--muted);
           padding: 24px 0;
+        }
+        .sk-gate-message {
+          padding: 12px 0 0;
         }
         .sk-status.err {
           color: var(--clay);
@@ -318,15 +361,15 @@ export function AdminServiceKeyPage() {
         }
         .sk-list {
           display: grid;
-          gap: 18px;
-          padding: 24px 0 60px;
+          gap: 16px;
+          padding: 30px 0 70px;
         }
         .sk-card {
           background: #fff;
-          border: 1px solid var(--line);
-          border-radius: 14px;
-          padding: 20px 22px;
-          box-shadow: var(--shadow-sm);
+          border: 1px solid #d2ded7;
+          border-radius: 8px;
+          padding: 22px 24px;
+          box-shadow: 0 8px 22px rgba(28, 39, 33, 0.06);
         }
         .sk-card-head {
           display: flex;
@@ -361,15 +404,15 @@ export function AdminServiceKeyPage() {
           white-space: nowrap;
         }
         .sk-status-chip.s-reviewing {
-          background: #fcf3e6;
-          color: #8a6516;
-          border-color: #ecd9b3;
+          background: #edf6ef;
+          color: var(--green-dark);
+          border-color: #cfe2d5;
         }
         .sk-status-chip.s-sent,
         .sk-status-chip.s-interested {
-          background: #e9f0f6;
-          color: #2f5a78;
-          border-color: #cfe0ec;
+          background: #eef4ee;
+          color: #2f7445;
+          border-color: #d6e5da;
         }
         .sk-status-chip.s-connected {
           background: #eaf5ec;
@@ -408,7 +451,7 @@ export function AdminServiceKeyPage() {
         }
         .sk-badge.urg-week {
           background: var(--gold);
-          color: #4a370c;
+          color: #fff;
         }
         .sk-badge.urg-flex {
           background: var(--blue);
@@ -461,10 +504,10 @@ export function AdminServiceKeyPage() {
         }
         .sk-media img,
         .sk-media video {
-          width: 180px;
-          height: 135px;
+          width: 184px;
+          height: 138px;
           object-fit: cover;
-          border-radius: 10px;
+          border-radius: 8px;
           border: 1px solid var(--line);
           background: #000;
           display: block;
@@ -513,24 +556,24 @@ export function AdminServiceKeyPage() {
             <section className="sk-gate">
               <div className="sk-card-box">
                 <h2>Private review page</h2>
-                <p style={{ color: "var(--muted)", marginTop: 0 }}>
+                <p className="sk-muted-copy">
                   Paste your Supabase <b>service_role</b> key to load submissions. Find it in your project: <b>Settings - API - Project API keys - service_role (secret)</b>.
                 </p>
-                <div className="sk-warn" style={{ margin: "0 0 4px" }}>
+                <div className="sk-warn sk-warn-tight">
                   The service_role key has <b>full access</b> to your project. Only use this page on your own computer. Never deploy it to a public site or share the key. It is stored only in this browser, never in the code.
                 </div>
                 <label htmlFor="keyInput">service_role key</label>
                 <input id="keyInput" type="password" placeholder="eyJ..." autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={onKeyDown} />
                 <div className="sk-row">
                   <input id="remember" type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
-                  <label htmlFor="remember" style={{ margin: 0, fontWeight: 500, color: "var(--muted)" }}>
+                  <label htmlFor="remember" className="sk-check-label">
                     Remember on this computer (stores it in this browser)
                   </label>
                 </div>
                 <button className="sk-btn sk-btn-primary" type="button" onClick={load}>
                   Load submissions
                 </button>
-                <p className="sk-status err" style={{ padding: "12px 0 0" }}>
+                <p className="sk-status err sk-gate-message">
                   {gateMessage}
                 </p>
               </div>
